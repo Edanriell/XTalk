@@ -2,7 +2,9 @@ syntax = "proto3";
 
 package chat;
 
-option go_package = "XTalk/connect/proto/chat";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/yourusername/connect/proto/chat";
 
 service ChatService {
   // Chat-based RPCs (used by chat-service gRPC implementation)
@@ -27,9 +29,9 @@ message Chat {
   string participant2 = 3;
   string status = 4;
   float match_score = 5;
-  int64 created_at = 6;
-  int64 updated_at = 7;
-  int64 ended_at = 8;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+  google.protobuf.Timestamp ended_at = 8;
 }
 
 message CreateChatRequest {
@@ -90,8 +92,8 @@ message ChatRoom {
   string type = 3; // private, group, public
   repeated string participant_ids = 4;
   string creator_id = 5;
-  int64 created_at = 6;
-  int64 updated_at = 7;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
 }
 
 message CreateRoomRequest {

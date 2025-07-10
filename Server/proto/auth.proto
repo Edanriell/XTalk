@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package auth;
 
-option go_package = "XTalk/connect/proto/auth";
+option go_package = "github.com/yourusername/connect/proto/auth";
 
 service AuthService {
   rpc Register(RegisterRequest) returns (RegisterResponse);
@@ -47,6 +47,7 @@ message ValidateTokenResponse {
   string user_id = 1;
   bool valid = 2;
   string message = 3;
+  string email = 4;
 }
 
 message RefreshTokenRequest {

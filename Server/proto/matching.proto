@@ -2,15 +2,24 @@ syntax = "proto3";
 
 package matching;
 
-option go_package = "XTalk/connect/proto/matching";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/yourusername/connect/proto/matching";
 
 service MatchingService {
+  // Queue-based RPCs (used by matching-service gRPC implementation)
   rpc JoinQueue(JoinQueueRequest) returns (JoinQueueResponse);
   rpc LeaveQueue(LeaveQueueRequest) returns (LeaveQueueResponse);
   rpc EndMatch(EndMatchRequest) returns (EndMatchResponse);
   rpc GetMatchingStatus(GetMatchingStatusRequest) returns (GetMatchingStatusResponse);
   rpc GetMatchHistory(GetMatchHistoryRequest) returns (GetMatchHistoryResponse);
+  // Legacy RPCs (used by api-gateway)
+  rpc JoinMatchingQueue(JoinMatchingRequest) returns (JoinMatchingResponse);
+  rpc LeaveMatchingQueue(LeaveMatchingRequest) returns (LeaveMatchingResponse);
+  rpc UpdateMatchingPreferences(UpdatePreferencesRequest) returns (UpdatePreferencesResponse);
 }
+
+// Queue-based messages (used by matching-service domain)
 
 message Match {
   string match_id = 1;
@@ -18,8 +27,8 @@ message Match {
   string chat_id = 3;
   float match_score = 4;
   string status = 5;
-  int64 created_at = 6;
-  int64 completed_at = 7;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp completed_at = 7;
 }
 
 message JoinQueueRequest {
@@ -88,4 +97,46 @@ message GetMatchHistoryResponse {
   bool success = 1;
   string message = 2;
   repeated Match matches = 3;
+}
+
+// Legacy matching messages
+
+message MatchingPreferences {
+  repeated string genders = 1;
+  int32 min_age = 2;
+  int32 max_age = 3;
+  repeated string countries = 4;
+  repeated string interests = 5;
+  repeated string languages = 6;
+}
+
+message JoinMatchingRequest {
+  string user_id = 1;
+  MatchingPreferences preferences = 2;
+}
+
+message JoinMatchingResponse {
+  bool success = 1;
+  string message = 2;
+  string queue_id = 3;
+  int32 estimated_wait_seconds = 4;
+}
+
+message LeaveMatchingRequest {
+  string user_id = 1;
+}
+
+message LeaveMatchingResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message UpdatePreferencesRequest {
+  string user_id = 1;
+  MatchingPreferences preferences = 2;
+}
+
+message UpdatePreferencesResponse {
+  bool success = 1;
+  string message = 2;
 }
