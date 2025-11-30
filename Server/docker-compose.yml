@@ -270,7 +270,7 @@ services:
   api-gateway:
     build:
       context: .
-      dockerfile: ./api-gateway/Dockerfile
+      dockerfile: gateway/Dockerfile
     container_name: connect_api_gateway
     environment:
       - AUTH_SERVICE_ADDR=auth-service:50051
