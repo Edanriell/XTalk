@@ -23,3 +23,7 @@ const (
 	defaultInitialDelay = 1 * time.Second
 	defaultMaxDelay     = 30 * time.Second
 )
+
+func Connect() {
+
+}
