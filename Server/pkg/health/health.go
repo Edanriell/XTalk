@@ -19,3 +19,9 @@ func SetReady(hs *health.Server, serviceName string) {
 	hs.SetServingStatus("", healthpb.HealthCheckResponse_SERVING)
 	hs.SetServingStatus(serviceName, healthpb.HealthCheckResponse_SERVING)
 }
+
+// SetNotReady marks the given service as NOT_SERVING (used during shutdown).
+func SetNotReady(hs *health.Server, serviceName string) {
+	hs.SetServingStatus("", healthpb.HealthCheckResponse_NOT_SERVING)
+	hs.SetServingStatus(serviceName, healthpb.HealthCheckResponse_NOT_SERVING)
+}
