@@ -13,3 +13,9 @@ func Register(server *grpc.Server) *health.Server {
 	healthpb.RegisterHealthServer(server, hs)
 	return hs
 }
+
+// SetReady marks the given service (and the overall server) as SERVING.
+func SetReady(hs *health.Server, serviceName string) {
+	hs.SetServingStatus("", healthpb.HealthCheckResponse_SERVING)
+	hs.SetServingStatus(serviceName, healthpb.HealthCheckResponse_SERVING)
+}
