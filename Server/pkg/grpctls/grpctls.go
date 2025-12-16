@@ -83,3 +83,29 @@ func ClientDialOption(caFile string) (grpc.DialOption, error) {
 
 	return grpc.WithTransportCredentials(credentials.NewTLS(tlsCfg)), nil
 }
+
+// MutualTLSClientDialOption returns a gRPC dial option for mutual TLS.
+func MutualTLSClientDialOption(certFile, keyFile, caFile string) (grpc.DialOption, error) {
+	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
+	if err != nil {
+		return nil, fmt.Errorf("load client cert/key: %w", err)
+	}
+
+	caCert, err := os.ReadFile(caFile)
+	if err != nil {
+		return nil, fmt.Errorf("read CA cert: %w", err)
+	}
+
+	pool := x509.NewCertPool()
+	if !pool.AppendCertsFromPEM(caCert) {
+		return nil, fmt.Errorf("failed to parse CA certificate")
+	}
+
+	tlsCfg := &tls.Config{
+		Certificates: []tls.Certificate{cert},
+		RootCAs:      pool,
+		MinVersion:   tls.VersionTLS12,
+	}
+
+	return grpc.WithTransportCredentials(credentials.NewTLS(tlsCfg)), nil
+}
