@@ -56,3 +56,43 @@ func Connect(url string, log *zap.Logger) (*amqp091.Connection, *amqp091.Channel
 	log.Info("connected to RabbitMQ")
 	return conn, ch, nil
 }
+
+// ConnectWithReconnect behaves like Connect but also returns a channel that
+// emits a new *amqp091.Connection each time the previous one is lost.
+// The caller should select on the returned channel and re-initialise
+// consumers/publishers when a new connection arrives.
+func ConnectWithReconnect(url string, log *zap.Logger) (*amqp091.Connection, *amqp091.Channel, <-chan *amqp091.Connection, error) {
+	conn, ch, err := Connect(url, log)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	reconnCh := make(chan *amqp091.Connection)
+
+	go func() {
+		defer close(reconnCh)
+		for {
+			reason, ok := <-conn.NotifyClose(make(chan *amqp091.Error))
+			if !ok {
+				log.Info("RabbitMQ connection closed cleanly")
+				return
+			}
+			log.Warn("RabbitMQ connection lost, reconnecting", zap.Any("reason", reason))
+
+			// Retry reconnection indefinitely with back-off (Connect already retries internally).
+			for {
+				newConn, _, reconnErr := Connect(url, log)
+				if reconnErr != nil {
+					log.Error("failed to reconnect to RabbitMQ, will retry in 30s", zap.Error(reconnErr))
+					time.Sleep(30 * time.Second)
+					continue
+				}
+				conn = newConn
+				reconnCh <- newConn
+				break
+			}
+		}
+	}()
+
+	return conn, ch, reconnCh, nil
+}
