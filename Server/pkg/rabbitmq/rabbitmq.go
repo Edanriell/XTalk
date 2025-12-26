@@ -96,3 +96,8 @@ func ConnectWithReconnect(url string, log *zap.Logger) (*amqp091.Connection, *am
 
 	return conn, ch, reconnCh, nil
 }
+
+// DeclareTopicExchange declares a durable topic exchange.
+func DeclareTopicExchange(ch *amqp091.Channel, exchange string) error {
+	return ch.ExchangeDeclare(exchange, "topic", true, false, false, false, nil)
+}
