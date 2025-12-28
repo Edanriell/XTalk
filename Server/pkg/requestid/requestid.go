@@ -15,3 +15,8 @@ func FromContext(ctx context.Context) string {
 	}
 	return ""
 }
+
+// WithRequestID returns a new context with the given request ID.
+func WithRequestID(ctx context.Context, id string) context.Context {
+	return context.WithValue(ctx, ctxKey{}, id)
+}
