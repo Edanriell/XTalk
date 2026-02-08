@@ -1,0 +1,648 @@
+{
+	"info": {
+		"_postman_id": "connect-api-collection",
+		"name": "Connect API",
+		"description": "Full API collection for the Connect application.\n\n## Setup\n1. Register or login to get tokens\n2. Tokens are auto-saved to collection variables\n3. Protected endpoints use the `access_token` variable automatically\n\n## Base URL\n`http://localhost:8080`",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8080",
+			"type": "string"
+		},
+		{
+			"key": "access_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "refresh_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "user_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "room_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "match_id",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Health",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/health",
+							"host": ["{{base_url}}"],
+							"path": ["health"]
+						},
+						"description": "Check if the API gateway is running."
+					},
+					"response": []
+				},
+				{
+					"name": "Metrics",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/metrics",
+							"host": ["{{base_url}}"],
+							"path": ["metrics"]
+						},
+						"description": "Prometheus metrics endpoint."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Auth",
+			"item": [
+				{
+					"name": "Register",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.access_token) {",
+									"        pm.collectionVariables.set('access_token', jsonData.access_token);",
+									"    }",
+									"    if (jsonData.refresh_token) {",
+									"        pm.collectionVariables.set('refresh_token', jsonData.refresh_token);",
+									"    }",
+									"    if (jsonData.user_id) {",
+									"        pm.collectionVariables.set('user_id', jsonData.user_id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"testuser\",\n    \"email\": \"testuser@example.com\",\n    \"password\": \"Test@1234\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/register",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "register"]
+						},
+						"description": "Register a new user. Password must have min 8 chars, uppercase, lowercase, number, and special character."
+					},
+					"response": []
+				},
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.access_token) {",
+									"        pm.collectionVariables.set('access_token', jsonData.access_token);",
+									"    }",
+									"    if (jsonData.refresh_token) {",
+									"        pm.collectionVariables.set('refresh_token', jsonData.refresh_token);",
+									"    }",
+									"    if (jsonData.user_id) {",
+									"        pm.collectionVariables.set('user_id', jsonData.user_id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"testuser@example.com\",\n    \"password\": \"Test@1234\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/login",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "login"]
+						},
+						"description": "Login with email and password. Returns access and refresh tokens."
+					},
+					"response": []
+				},
+				{
+					"name": "Refresh Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.access_token) {",
+									"        pm.collectionVariables.set('access_token', jsonData.access_token);",
+									"    }",
+									"    if (jsonData.refresh_token) {",
+									"        pm.collectionVariables.set('refresh_token', jsonData.refresh_token);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"refresh_token\": \"{{refresh_token}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/refresh",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "refresh"]
+						},
+						"description": "Refresh access token using a valid refresh token. Implements token rotation."
+					},
+					"response": []
+				},
+				{
+					"name": "Logout",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    pm.collectionVariables.set('access_token', '');",
+									"    pm.collectionVariables.set('refresh_token', '');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/logout",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "logout"]
+						},
+						"description": "Logout and invalidate the current token."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Users",
+			"item": [
+				{
+					"name": "Get My Profile",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/users/me",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "users", "me"]
+						},
+						"description": "Get the current authenticated user's profile."
+					},
+					"response": []
+				},
+				{
+					"name": "Update My Profile",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Idempotency-Key",
+								"value": "{{$guid}}",
+								"description": "Optional. Prevents duplicate updates within 24h.",
+								"disabled": true
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"updateduser\",\n    \"bio\": \"Hello, I'm using Connect!\",\n    \"age\": 25,\n    \"gender\": \"male\",\n    \"country\": \"US\",\n    \"language\": \"en\",\n    \"interests\": [\"gaming\", \"music\", \"coding\"]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/users/me",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "users", "me"]
+						},
+						"description": "Update the current user's profile. All fields are optional."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Rooms",
+			"item": [
+				{
+					"name": "Create Room",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201 || pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.room && jsonData.room.id) {",
+									"        pm.collectionVariables.set('room_id', jsonData.room.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Test Room\",\n    \"type\": \"group\",\n    \"participant_ids\": [\"<other-user-uuid>\"]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/rooms",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "rooms"]
+						},
+						"description": "Create a new chat room. Type can be 'direct' or 'group'. Max 100 participants."
+					},
+					"response": []
+				},
+				{
+					"name": "List My Rooms",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/rooms",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "rooms"]
+						},
+						"description": "List all rooms the current user is a participant in."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Room by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/rooms/{{room_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "rooms", "{{room_id}}"]
+						},
+						"description": "Get details of a specific room by its UUID."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Room",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/rooms/{{room_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "rooms", "{{room_id}}"]
+						},
+						"description": "Delete a room. Only the room creator can delete it."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Messages",
+			"item": [
+				{
+					"name": "Send Message",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"room_id\": \"{{room_id}}\",\n    \"content\": \"Hello from Postman!\",\n    \"type\": \"text\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/messages",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "messages"]
+						},
+						"description": "Send a message to a room. Max 10,000 characters."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Messages",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/messages?room_id={{room_id}}&limit=50&offset=0",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "messages"],
+							"query": [
+								{
+									"key": "room_id",
+									"value": "{{room_id}}",
+									"description": "Room UUID (required)"
+								},
+								{
+									"key": "limit",
+									"value": "50",
+									"description": "Number of messages (1-200, default: 50)"
+								},
+								{
+									"key": "offset",
+									"value": "0",
+									"description": "Pagination offset (default: 0)"
+								}
+							]
+						},
+						"description": "Get messages from a room with pagination."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Matching",
+			"item": [
+				{
+					"name": "Start Matching",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.match_id) {",
+									"        pm.collectionVariables.set('match_id', jsonData.match_id);",
+									"    }",
+									"    if (jsonData.chat_id) {",
+									"        pm.collectionVariables.set('room_id', jsonData.chat_id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"age\": 25,\n    \"min_age\": 18,\n    \"max_age\": 35,\n    \"interests\": [\"gaming\", \"music\"],\n    \"gender\": \"male\",\n    \"location\": \"US\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/matching/start",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "matching", "start"]
+						},
+						"description": "Start looking for a match. Age must be 13-150. Max 30 interests."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Matching Status",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/matching/status",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "matching", "status"]
+						},
+						"description": "Check current matching status (matching, matched, or not_matching)."
+					},
+					"response": []
+				},
+				{
+					"name": "Stop Matching",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/matching/stop",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "matching", "stop"]
+						},
+						"description": "Cancel the current matching search."
+					},
+					"response": []
+				},
+				{
+					"name": "End Match",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"match_id\": \"{{match_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/matching/end",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "matching", "end"]
+						},
+						"description": "End an active match by its ID."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Match History",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/matching/history?limit=50&offset=0",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "matching", "history"],
+							"query": [
+								{
+									"key": "limit",
+									"value": "50",
+									"description": "Number of matches (1-200, default: 50)"
+								},
+								{
+									"key": "offset",
+									"value": "0",
+									"description": "Pagination offset (default: 0)"
+								}
+							]
+						},
+						"description": "Get past match history with pagination."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "WebSocket",
+			"item": [
+				{
+					"name": "WebSocket Connection",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/ws?token={{access_token}}",
+							"host": ["{{base_url}}"],
+							"path": ["ws"],
+							"query": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"description": "JWT access token for authentication"
+								}
+							]
+						},
+						"description": "WebSocket endpoint. Use Postman's WebSocket tab to connect.\n\n## Message Types\n\n### Send Chat Message\n```json\n{\n    \"type\": \"chat_message\",\n    \"room_id\": \"<room-uuid>\",\n    \"content\": \"Hello!\"\n}\n```\n\n### Typing Indicator\n```json\n{\n    \"type\": \"typing\",\n    \"room_id\": \"<room-uuid>\",\n    \"is_typing\": true\n}\n```\n\n### Join Room\n```json\n{\n    \"type\": \"join_room\",\n    \"room_id\": \"<room-uuid>\"\n}\n```\n\n### Leave Room\n```json\n{\n    \"type\": \"leave_room\",\n    \"room_id\": \"<room-uuid>\"\n}\n```"
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}
