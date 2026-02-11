@@ -26,9 +26,9 @@ func SetNotReady(hs *health.Server, serviceName string) {
 
 func Check(ctx context.Context, connection *grpc.ClientConn, service string) (healthpb.HealthCheckResponse_ServingStatus, error) {
 	client := healthpb.NewHealthClient(connection)
-	response, err := client.Check(ctx, &healthpb.HealthCheckRequest{Service: service})
+	res, err := client.Check(ctx, &healthpb.HealthCheckRequest{Service: service})
 	if err != nil {
 		return healthpb.HealthCheckResponse_UNKNOWN, err
 	}
-	return response.Status, nil
+	return res.Status, nil
 }
