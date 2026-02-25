@@ -6,7 +6,7 @@ type Email struct {
 	value string
 }
 
-func NewEmail(value string) (Email, error) {
+func CreateEmail(value string) (Email, error) {
 	normalised, err := validation.ValidateEmail(value)
 	if err != nil {
 		return Email{}, err
