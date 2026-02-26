@@ -1,8 +1,12 @@
-package config
+package configurations
 
 import (
 	"XTalk/pkg/config"
 )
+
+// TODO
+// Should we rename this part
+// Also in .NET app here will be EntityFramework config
 
 type Config struct {
 	Port        string
