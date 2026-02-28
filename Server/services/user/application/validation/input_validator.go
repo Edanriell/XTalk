@@ -9,6 +9,9 @@ import (
 // TODO
 // All this shit must be put in value objects
 // Create and extend errors in domain users
+// Create missing value objects !
+
+// What should we do with messiging and grpc ? Should it be in infrastructure
 
 var usernameRegex = regexp.MustCompile(`^[a-zA-Z0-9_]{3,30}$`)
 
