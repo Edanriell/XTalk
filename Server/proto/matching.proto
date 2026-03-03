@@ -1,0 +1,91 @@
+syntax = "proto3";
+
+package matching;
+
+option go_package = "XTalk/connect/proto/matching";
+
+service MatchingService {
+  rpc JoinQueue(JoinQueueRequest) returns (JoinQueueResponse);
+  rpc LeaveQueue(LeaveQueueRequest) returns (LeaveQueueResponse);
+  rpc EndMatch(EndMatchRequest) returns (EndMatchResponse);
+  rpc GetMatchingStatus(GetMatchingStatusRequest) returns (GetMatchingStatusResponse);
+  rpc GetMatchHistory(GetMatchHistoryRequest) returns (GetMatchHistoryResponse);
+}
+
+message Match {
+  string match_id = 1;
+  string matched_with = 2;
+  string chat_id = 3;
+  float match_score = 4;
+  string status = 5;
+  int64 created_at = 6;
+  int64 completed_at = 7;
+}
+
+message JoinQueueRequest {
+  string user_id = 1;
+  int32 age = 2;
+  int32 min_age = 3;
+  int32 max_age = 4;
+  repeated string interests = 5;
+  string gender = 6;
+  string location = 7;
+}
+
+message JoinQueueResponse {
+  bool success = 1;
+  string status = 2;
+  string message = 3;
+  string match_id = 4;
+  string matched_user_id = 5;
+  string chat_id = 6;
+  float match_score = 7;
+}
+
+message LeaveQueueRequest {
+  string user_id = 1;
+}
+
+message LeaveQueueResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message GetMatchingStatusRequest {
+  string user_id = 1;
+}
+
+message GetMatchingStatusResponse {
+  bool success = 1;
+  string status = 2;
+  string message = 3;
+  int32 wait_time = 4;
+  int32 priority = 5;
+  string match_id = 6;
+  string chat_id = 7;
+  string matched_with = 8;
+  float match_score = 9;
+}
+
+message EndMatchRequest {
+  string match_id = 1;
+  string user_id = 2;
+}
+
+message EndMatchResponse {
+  string match_id = 1;
+  bool success = 2;
+  string message = 3;
+}
+
+message GetMatchHistoryRequest {
+  string user_id = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+}
+
+message GetMatchHistoryResponse {
+  bool success = 1;
+  string message = 2;
+  repeated Match matches = 3;
+}

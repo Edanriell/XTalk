@@ -1,0 +1,158 @@
+syntax = "proto3";
+
+package chat;
+
+option go_package = "XTalk/connect/proto/chat";
+
+service ChatService {
+  // Chat-based RPCs (used by chat-service gRPC implementation)
+  rpc CreateChat(CreateChatRequest) returns (CreateChatResponse);
+  rpc GetChat(GetChatRequest) returns (GetChatResponse);
+  rpc EndChat(EndChatRequest) returns (EndChatResponse);
+  rpc GetUserChats(GetUserChatsRequest) returns (GetUserChatsResponse);
+  // Room-based RPCs (used by api-gateway)
+  rpc CreateRoom(CreateRoomRequest) returns (CreateRoomResponse);
+  rpc GetRoom(GetRoomRequest) returns (GetRoomResponse);
+  rpc JoinRoom(JoinRoomRequest) returns (JoinRoomResponse);
+  rpc LeaveRoom(LeaveRoomRequest) returns (LeaveRoomResponse);
+  rpc GetUserRooms(GetUserRoomsRequest) returns (GetUserRoomsResponse);
+  rpc DeleteRoom(DeleteRoomRequest) returns (DeleteRoomResponse);
+}
+
+// Chat-based messages (used by chat-service domain)
+
+message Chat {
+  string id = 1;
+  string participant1 = 2;
+  string participant2 = 3;
+  string status = 4;
+  float match_score = 5;
+  int64 created_at = 6;
+  int64 updated_at = 7;
+  int64 ended_at = 8;
+}
+
+message CreateChatRequest {
+  string participant1_id = 1;
+  string participant2_id = 2;
+  float match_score = 3;
+}
+
+message CreateChatResponse {
+  string chat_id = 1;
+  string participant1 = 2;
+  string participant2 = 3;
+  float match_score = 4;
+  bool success = 5;
+  string message = 6;
+}
+
+message GetChatRequest {
+  string chat_id = 1;
+  string user_id = 2;
+}
+
+message GetChatResponse {
+  bool success = 1;
+  string message = 2;
+  Chat chat = 3;
+}
+
+message EndChatRequest {
+  string chat_id = 1;
+  string user_id = 2;
+}
+
+message EndChatResponse {
+  string chat_id = 1;
+  bool success = 2;
+  string message = 3;
+}
+
+message GetUserChatsRequest {
+  string user_id = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+}
+
+message GetUserChatsResponse {
+  bool success = 1;
+  string message = 2;
+  repeated Chat chats = 3;
+  int32 total = 4;
+}
+
+// Room-based messages (used by api-gateway)
+
+message ChatRoom {
+  string id = 1;
+  string name = 2;
+  string type = 3; // private, group, public
+  repeated string participant_ids = 4;
+  string creator_id = 5;
+  int64 created_at = 6;
+  int64 updated_at = 7;
+}
+
+message CreateRoomRequest {
+  string name = 1;
+  string type = 2;
+  string creator_id = 3;
+  repeated string participant_ids = 4;
+}
+
+message CreateRoomResponse {
+  ChatRoom room = 1;
+  bool success = 2;
+  string message = 3;
+}
+
+message GetRoomRequest {
+  string room_id = 1;
+}
+
+message GetRoomResponse {
+  ChatRoom room = 1;
+  bool success = 2;
+  string message = 3;
+}
+
+message JoinRoomRequest {
+  string room_id = 1;
+  string user_id = 2;
+}
+
+message JoinRoomResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message LeaveRoomRequest {
+  string room_id = 1;
+  string user_id = 2;
+}
+
+message LeaveRoomResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message GetUserRoomsRequest {
+  string user_id = 1;
+}
+
+message GetUserRoomsResponse {
+  repeated ChatRoom rooms = 1;
+  bool success = 2;
+  string message = 3;
+}
+
+message DeleteRoomRequest {
+  string room_id = 1;
+  string user_id = 2;
+}
+
+message DeleteRoomResponse {
+  bool success = 1;
+  string message = 2;
+}
