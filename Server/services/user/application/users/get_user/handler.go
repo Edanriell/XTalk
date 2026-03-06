@@ -3,14 +3,14 @@ package get_user
 import (
 	"context"
 
-	repository "XTalk/services/user/domain/users"
+	"XTalk/services/user/domain/users"
 )
 
 type Handler struct {
-	userRepo repository.UserRepository
+	userRepo users.UserRepository
 }
 
-func NewHandler(userRepo repository.UserRepository) *Handler {
+func NewHandler(userRepo users.UserRepository) *Handler {
 	return &Handler{userRepo: userRepo}
 }
 
