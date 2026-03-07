@@ -1,12 +1,14 @@
 package main
 
 import (
-	"XTalk/api-gateway/config"
 	"context"
 	"encoding/json"
 	"log"
 	"net/http"
 	"time"
+
+	"XTalk/api-gateway/config"
+	"XTalk/api-gateway/middlewares"
 )
 
 func main() {
@@ -47,9 +49,9 @@ func main() {
 	mux.HandleFunc("/api/v1/users/", userHandler.UpdateUser)
 
 	// Apply middleware
-	handler := corsMiddleware(mux)
-	handler = rateLimitMiddleware(handler)
-	handler = loggingMiddleware(handler)
+	handler := middlewares.CorsMiddleware(mux)
+	handler = middlewares.RateLimitMiddleware(handler)
+	handler = middlewares.LoggingMiddleware(handler)
 
 	server := &http.Server{
 		Addr:         ":" + cfg.ApiGatewayPort,
