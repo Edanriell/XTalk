@@ -1,13 +1,13 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"log"
 	"net/http"
 	"time"
 
 	"XTalk/api-gateway/config"
+	"XTalk/api-gateway/handlers"
 	"XTalk/api-gateway/middlewares"
 )
 
@@ -17,17 +17,20 @@ func main() {
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(cfg)
 	userHandler := handlers.NewUserHandler(cfg)
+	// TODO
+	// Fix later
+	//wsHandler := handlers.NewWebSocketHandler(cfg)
 
-	mqConsumer, err := messaging.NewRabbitMqConsumer(cfg.RabbitMqUrl, wsHandler)
-	if err != nil {
-		log.Printf("Warning: Failed to initialize RabbitMq consumer: %v (real-time push disabled)", err)
-	} else {
-		if err := mqConsumer.Start(context.Background()); err != nil {
-			log.Printf("Warning: Failed to start RabbitMq consumer: %v", err)
-		} else {
-			defer mqConsumer.Close()
-		}
-	}
+	//mqConsumer, err := messaging.NewRabbitMqConsumer(cfg.RabbitMqUrl, wsHandler)
+	//if err != nil {
+	//	log.Printf("Warning: Failed to initialize RabbitMq consumer: %v (real-time push disabled)", err)
+	//} else {
+	//	if err := mqConsumer.Start(context.Background()); err != nil {
+	//		log.Printf("Warning: Failed to start RabbitMq consumer: %v", err)
+	//	} else {
+	//		defer mqConsumer.Close()
+	//	}
+	//}
 
 	// Create router
 	mux := http.NewServeMux()
@@ -47,6 +50,11 @@ func main() {
 	// User routes
 	mux.HandleFunc("/api/v1/users/me", userHandler.GetCurrentUser)
 	mux.HandleFunc("/api/v1/users/", userHandler.UpdateUser)
+
+	// TODO
+	// Fix later
+	// WebSocket endpoint
+	//mux.HandleFunc("/ws", wsHandler.HandleWebSocket)
 
 	// Apply middleware
 	handler := middlewares.CorsMiddleware(mux)
