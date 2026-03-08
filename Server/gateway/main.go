@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"time"
 
-	"XTalk/api-gateway/config"
-	"XTalk/api-gateway/handlers"
-	"XTalk/api-gateway/middlewares"
+	"XTalk/gateway/config"
+	"XTalk/gateway/handlers"
+	"XTalk/gateway/middlewares"
 )
 
 func main() {

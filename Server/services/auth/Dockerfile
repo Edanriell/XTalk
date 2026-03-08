@@ -9,15 +9,15 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o api-gateway ./api-gateway
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o auth-service ./auth-service
 
 FROM alpine:latest
 RUN apk --no-cache add ca-certificates
 
 WORKDIR /root/
 
-COPY --from=builder /app/api-gateway .
+COPY --from=builder /app/auth-service .
 
-EXPOSE 8080
+EXPOSE 50051
 
-CMD ["./api-gateway"]
+CMD ["./auth-service"]

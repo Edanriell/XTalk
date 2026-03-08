@@ -10,8 +10,8 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 
-	"XTalk/api-gateway/config"
-	"XTalk/api-gateway/helpers"
+	"XTalk/gateway/config"
+	"XTalk/gateway/utils"
 	authpb "XTalk/proto/auth"
 	userpb "XTalk/proto/user"
 )
@@ -45,7 +45,7 @@ func (h *UserHandler) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token := helpers.ExtractToken(r)
+	token := utils.ExtractToken(r)
 	if token == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -88,7 +88,7 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token := helpers.ExtractToken(r)
+	token := utils.ExtractToken(r)
 	if token == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return

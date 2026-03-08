@@ -9,8 +9,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"XTalk/api-gateway/config"
-	"XTalk/api-gateway/helpers"
+	"XTalk/gateway/config"
+	"XTalk/gateway/utils"
 	pb "XTalk/proto/auth"
 )
 
@@ -148,7 +148,7 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token := helpers.ExtractToken(r)
+	token := utils.ExtractToken(r)
 	if token == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
