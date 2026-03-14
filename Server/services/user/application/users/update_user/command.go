@@ -1,4 +1,4 @@
-package update_use
+package update_user
 
 type Command struct {
 	UserID    string
