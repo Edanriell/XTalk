@@ -1,224 +1,190 @@
-package messaging
+package rabbitmq
 
 import (
-	"XTalk/services/user/application/users/create_user"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"time"
+	"sync"
+
+	appevents "XTalk/services/user/application/events"
 
 	"github.com/rabbitmq/amqp091-go"
 	"go.uber.org/zap"
 )
 
-// --- event payloads ---
+const queueName = "user-service.events"
 
-type UserRegisteredEvent struct {
-	UserID   string `json:"UserID"`
-	Username string `json:"Username"`
-	Email    string `json:"Email"`
+type eventHandler interface {
+	UserRegistered(context.Context, appevents.UserRegistered) error
+	MatchFound(context.Context, appevents.MatchFound) error
+	MatchCompleted(context.Context, appevents.MatchCompleted) error
 }
 
-type MatchFoundEvent struct {
-	MatchID    string    `json:"MatchID"`
-	User1ID    string    `json:"User1ID"`
-	User2ID    string    `json:"User2ID"`
-	MatchScore float64   `json:"MatchScore"`
-	ChatID     string    `json:"ChatID"`
-	Timestamp  time.Time `json:"Timestamp"`
+type binding struct {
+	exchange   string
+	routingKey string
 }
 
-type MatchCompletedEvent struct {
-	MatchID   string    `json:"MatchID"`
-	User1ID   string    `json:"User1ID"`
-	User2ID   string    `json:"User2ID"`
-	Duration  int64     `json:"Duration"`
-	Timestamp time.Time `json:"Timestamp"`
+var bindings = []binding{
+	{exchange: "auth_events", routingKey: "auth.user_registered"},
+	{exchange: "matching_events", routingKey: "matching.match_found"},
+	{exchange: "matching_events", routingKey: "matching.match_completed"},
 }
 
-// RabbitMQEventConsumer consumes domain events relevant to user-service.
-type RabbitMQEventConsumer struct {
-	conn              *amqp091.Connection
-	channel           *amqp091.Channel
-	userRepo          repositories.UserRepository
-	createUserHandler *create_user.Handler
-	log               *zap.Logger
-	done              chan struct{}
+// Consumer is a RabbitMQ adapter for external integration events.
+type Consumer struct {
+	connection *amqp091.Connection
+	channel    *amqp091.Channel
+	handler    eventHandler
+	log        *zap.Logger
+	closeOnce  sync.Once
+	failures   chan error
 }
 
-func NewRabbitMQEventConsumer(
-	rabbitURL string,
-	userRepo repositories.UserRepository,
-	createUserHandler *create_user.Handler,
-	log *zap.Logger,
-) (*RabbitMQEventConsumer, error) {
-	conn, err := amqp091.Dial(rabbitURL)
+func NewConsumer(url string, handler eventHandler, log *zap.Logger) (*Consumer, error) {
+	connection, err := amqp091.Dial(url)
 	if err != nil {
 		return nil, fmt.Errorf("connect to RabbitMQ: %w", err)
 	}
-
-	ch, err := conn.Channel()
+	channel, err := connection.Channel()
 	if err != nil {
-		conn.Close()
-		return nil, fmt.Errorf("open channel: %w", err)
+		_ = connection.Close()
+		return nil, fmt.Errorf("open RabbitMQ channel: %w", err)
 	}
-
-	return &RabbitMQEventConsumer{
-		conn:              conn,
-		channel:           ch,
-		userRepo:          userRepo,
-		createUserHandler: createUserHandler,
-		log:               log,
-		done:              make(chan struct{}),
+	return &Consumer{
+		connection: connection, channel: channel, handler: handler, log: log,
+		failures: make(chan error, 1),
 	}, nil
 }
 
-func (c *RabbitMQEventConsumer) Start(ctx context.Context) error {
-	const queueName = "user-service.events"
+func (c *Consumer) Start(ctx context.Context) error {
+	queue, err := c.declareTopology()
+	if err != nil {
+		return err
+	}
+	if err := c.channel.Qos(10, 0, false); err != nil {
+		return fmt.Errorf("set RabbitMQ prefetch: %w", err)
+	}
+	deliveries, err := c.channel.ConsumeWithContext(ctx, queue, "", false, false, false, false, nil)
+	if err != nil {
+		return fmt.Errorf("consume RabbitMQ queue: %w", err)
+	}
 
-	for _, exchange := range []string{"auth_events", "matching_events"} {
-		if err := c.channel.ExchangeDeclare(exchange, "topic", true, false, false, false, nil); err != nil {
-			return fmt.Errorf("declare exchange %s: %w", exchange, err)
+	go c.consume(ctx, deliveries)
+	go c.monitorConnection(ctx)
+	c.log.Info("user integration-event consumer started", zap.String("queue", queueName))
+	return nil
+}
+
+func (c *Consumer) Failures() <-chan error { return c.failures }
+
+func (c *Consumer) monitorConnection(ctx context.Context) {
+	notifications := c.connection.NotifyClose(make(chan *amqp091.Error, 1))
+	select {
+	case <-ctx.Done():
+		return
+	case reason, ok := <-notifications:
+		var err error
+		if ok && reason != nil {
+			err = fmt.Errorf("RabbitMQ connection closed: %w", reason)
+		} else {
+			err = errors.New("RabbitMQ connection closed")
+		}
+		select {
+		case c.failures <- err:
+		default:
 		}
 	}
+}
 
-	q, err := c.channel.QueueDeclare(queueName, true, false, false, false, nil)
+func (c *Consumer) declareTopology() (string, error) {
+	exchanges := make(map[string]struct{}, len(bindings))
+	for _, item := range bindings {
+		if _, declared := exchanges[item.exchange]; declared {
+			continue
+		}
+		if err := c.channel.ExchangeDeclare(item.exchange, "topic", true, false, false, false, nil); err != nil {
+			return "", fmt.Errorf("declare exchange %q: %w", item.exchange, err)
+		}
+		exchanges[item.exchange] = struct{}{}
+	}
+
+	queue, err := c.channel.QueueDeclare(queueName, true, false, false, false, nil)
 	if err != nil {
-		return fmt.Errorf("declare queue: %w", err)
+		return "", fmt.Errorf("declare queue %q: %w", queueName, err)
 	}
-
-	bindings := []struct{ key, exchange string }{
-		{"auth.user_registered", "auth_events"},
-		{"matching.match_found", "matching_events"},
-		{"matching.match_completed", "matching_events"},
-	}
-	for _, b := range bindings {
-		if err := c.channel.QueueBind(q.Name, b.key, b.exchange, false, nil); err != nil {
-			return fmt.Errorf("bind %s: %w", b.key, err)
+	for _, item := range bindings {
+		if err := c.channel.QueueBind(queue.Name, item.routingKey, item.exchange, false, nil); err != nil {
+			return "", fmt.Errorf("bind routing key %q: %w", item.routingKey, err)
 		}
 	}
+	return queue.Name, nil
+}
 
-	msgs, err := c.channel.Consume(q.Name, "", false, false, false, false, nil)
-	if err != nil {
-		return fmt.Errorf("start consuming: %w", err)
-	}
-
-	go func() {
-		for {
-			select {
-			case msg, ok := <-msgs:
-				if !ok {
-					return
-				}
-				if err := c.handleMessage(ctx, msg); err != nil {
-					c.log.Error("failed to handle message, nacking",
-						zap.String("routing_key", msg.RoutingKey), zap.Error(err))
-					msg.Nack(false, true)
-				} else {
-					msg.Ack(false)
-				}
-			case <-c.done:
-				return
+func (c *Consumer) consume(ctx context.Context, deliveries <-chan amqp091.Delivery) {
+	for delivery := range deliveries {
+		err := c.dispatch(ctx, delivery.RoutingKey, delivery.Body)
+		if err == nil {
+			if ackErr := delivery.Ack(false); ackErr != nil {
+				c.log.Error("ack integration event", zap.Error(ackErr))
 			}
+			continue
 		}
-	}()
 
-	c.log.Info("RabbitMQ consumer started for user-service",
-		zap.Strings("routing_keys", []string{
-			"auth.user_registered",
-			"matching.match_found",
-			"matching.match_completed",
-		}))
-	return nil
+		requeue := !appevents.IsPermanent(err) && ctx.Err() == nil
+		c.log.Error("handle integration event",
+			zap.String("routing_key", delivery.RoutingKey),
+			zap.Bool("requeue", requeue),
+			zap.Error(err),
+		)
+		if nackErr := delivery.Nack(false, requeue); nackErr != nil {
+			c.log.Error("nack integration event", zap.Error(nackErr))
+		}
+	}
 }
 
-func (c *RabbitMQEventConsumer) handleMessage(ctx context.Context, msg amqp091.Delivery) error {
-	switch msg.RoutingKey {
+func (c *Consumer) dispatch(ctx context.Context, routingKey string, body []byte) error {
+	switch routingKey {
 	case "auth.user_registered":
-		return c.handleUserRegistered(ctx, msg.Body)
-	case "matching.match_found":
-		return c.handleMatchFound(ctx, msg.Body)
-	case "matching.match_completed":
-		return c.handleMatchCompleted(ctx, msg.Body)
+		var payload struct {
+			UserID   string `json:"UserID"`
+			Username string `json:"Username"`
+			Email    string `json:"Email"`
+		}
+		if err := json.Unmarshal(body, &payload); err != nil {
+			return appevents.Permanent(fmt.Errorf("decode user registration: %w", err))
+		}
+		return c.handler.UserRegistered(ctx, appevents.UserRegistered(payload))
+
+	case "matching.match_found", "matching.match_completed":
+		var payload struct {
+			MatchID string `json:"MatchID"`
+			User1ID string `json:"User1ID"`
+			User2ID string `json:"User2ID"`
+		}
+		if err := json.Unmarshal(body, &payload); err != nil {
+			return appevents.Permanent(fmt.Errorf("decode matching event: %w", err))
+		}
+		userIDs := []string{payload.User1ID, payload.User2ID}
+		if routingKey == "matching.match_found" {
+			return c.handler.MatchFound(ctx, appevents.MatchFound{MatchID: payload.MatchID, UserIDs: userIDs})
+		}
+		return c.handler.MatchCompleted(ctx, appevents.MatchCompleted{MatchID: payload.MatchID, UserIDs: userIDs})
 	default:
-		c.log.Warn("unknown routing key", zap.String("routing_key", msg.RoutingKey))
-		return nil
+		return appevents.Permanent(fmt.Errorf("unsupported routing key %q", routingKey))
 	}
 }
 
-func (c *RabbitMQEventConsumer) handleUserRegistered(ctx context.Context, body []byte) error {
-	var event UserRegisteredEvent
-	if err := json.Unmarshal(body, &event); err != nil {
-		c.log.Error("unmarshal user_registered event", zap.Error(err))
-		return nil // bad payload — don't requeue
-	}
-
-	if err := c.createUserHandler.Handle(ctx, create_user.Command{
-		UserID:   event.UserID,
-		Username: event.Username,
-		Email:    event.Email,
-	}); err != nil {
-		c.log.Error("create user profile", zap.String("user_id", event.UserID), zap.Error(err))
-		return err
-	}
-
-	c.log.Info("created user profile from registration event",
-		zap.String("user_id", event.UserID), zap.String("username", event.Username))
-	return nil
-}
-
-func (c *RabbitMQEventConsumer) handleMatchFound(ctx context.Context, body []byte) error {
-	var event MatchFoundEvent
-	if err := json.Unmarshal(body, &event); err != nil {
-		c.log.Error("unmarshal match_found event", zap.Error(err))
-		return nil
-	}
-
-	var lastErr error
-	for _, uid := range []string{event.User1ID, event.User2ID} {
-		if err := c.userRepo.UpdateStatus(ctx, uid, valueobjects.StatusAway); err != nil {
-			c.log.Error("update user status on match_found", zap.String("user_id", uid), zap.Error(err))
-			lastErr = err
+func (c *Consumer) Close() error {
+	var closeErr error
+	c.closeOnce.Do(func() {
+		if err := c.channel.Close(); err != nil && !errors.Is(err, amqp091.ErrClosed) {
+			closeErr = err
 		}
-	}
-	if lastErr != nil {
-		return lastErr
-	}
-
-	c.log.Info("updated users to away status",
-		zap.String("match_id", event.MatchID),
-		zap.String("user1", event.User1ID), zap.String("user2", event.User2ID))
-	return nil
-}
-
-func (c *RabbitMQEventConsumer) handleMatchCompleted(ctx context.Context, body []byte) error {
-	var event MatchCompletedEvent
-	if err := json.Unmarshal(body, &event); err != nil {
-		c.log.Error("unmarshal match_completed event", zap.Error(err))
-		return nil
-	}
-
-	var lastErr error
-	for _, uid := range []string{event.User1ID, event.User2ID} {
-		if err := c.userRepo.UpdateStatus(ctx, uid, valueobjects.StatusOnline); err != nil {
-			c.log.Error("update user status on match_completed", zap.String("user_id", uid), zap.Error(err))
-			lastErr = err
+		if err := c.connection.Close(); err != nil && !errors.Is(err, amqp091.ErrClosed) && closeErr == nil {
+			closeErr = err
 		}
-	}
-	if lastErr != nil {
-		return lastErr
-	}
-
-	c.log.Info("updated users to online status",
-		zap.String("match_id", event.MatchID),
-		zap.String("user1", event.User1ID), zap.String("user2", event.User2ID))
-	return nil
-}
-
-func (c *RabbitMQEventConsumer) Close() error {
-	close(c.done)
-	if err := c.channel.Close(); err != nil {
-		return err
-	}
-	return c.conn.Close()
+	})
+	return closeErr
 }

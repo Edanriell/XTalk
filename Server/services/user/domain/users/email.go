@@ -1,17 +1,29 @@
 package users
 
-import "XTalk/pkg/validation"
+import (
+	"regexp"
+	"strings"
+)
 
+var emailPattern = regexp.MustCompile(`^[a-zA-Z0-9.!#$%&'*+/=?^_` + "`" + `{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$`)
+
+// Email is an immutable, normalized email address value object.
 type Email struct {
 	value string
 }
 
-func CreateEmail(value string) (Email, error) {
-	normalised, err := validation.ValidateEmail(value)
-	if err != nil {
-		return Email{}, err
+func NewEmail(raw string) (Email, error) {
+	value := strings.ToLower(strings.TrimSpace(raw))
+	switch {
+	case value == "":
+		return Email{}, ErrEmailRequired
+	case len(value) > 254:
+		return Email{}, ErrEmailTooLong
+	case !emailPattern.MatchString(value):
+		return Email{}, ErrEmailInvalid
+	default:
+		return Email{value: value}, nil
 	}
-	return Email{value: normalised}, nil
 }
 
 func (e Email) Value() string  { return e.value }

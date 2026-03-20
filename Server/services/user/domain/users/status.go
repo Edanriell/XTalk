@@ -1,6 +1,6 @@
 package users
 
-import "errors"
+import "strings"
 
 type Status string
 
@@ -11,12 +11,12 @@ const (
 )
 
 func NewStatus(value string) (Status, error) {
-	s := Status(value)
-	switch s {
+	status := Status(strings.ToLower(strings.TrimSpace(value)))
+	switch status {
 	case StatusOnline, StatusOffline, StatusAway:
-		return s, nil
+		return status, nil
 	default:
-		return "", errors.New("invalid status: must be online, offline, or away")
+		return "", ErrStatusInvalid
 	}
 }
 

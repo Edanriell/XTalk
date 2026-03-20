@@ -4,210 +4,138 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+
+	"XTalk/services/user/domain/users"
 
 	"github.com/lib/pq"
 )
 
-// PostgresUserRepository implements repositories.UserRepository.
+// PostgresUserRepository is the PostgreSQL adapter for the domain repository port.
 type PostgresUserRepository struct {
 	db *sql.DB
 }
 
-func NewPostgresUserRepository(db *sql.DB) repositories.UserRepository {
+func NewPostgresUserRepository(db *sql.DB) *PostgresUserRepository {
 	return &PostgresUserRepository{db: db}
 }
 
-func (r *PostgresUserRepository) Save(ctx context.Context, user *entities.User) error {
+// Create is idempotent by aggregate ID so an at-least-once registration event
+// can safely be delivered again. Other unique conflicts remain domain errors.
+func (r *PostgresUserRepository) Create(ctx context.Context, user *users.User) error {
 	const query = `
-		INSERT INTO users (id, username, email, age, gender, country, language,
-		                    interests, status, bio, avatar_url,
-		                    created_at, updated_at, last_seen, is_active)
-		VALUES ($1,$2,$3,$4,NULLIF($5,''),$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
-		ON CONFLICT (id) DO UPDATE SET
-			username   = EXCLUDED.username,
-			age        = EXCLUDED.age,
-			gender     = EXCLUDED.gender,
-			country    = EXCLUDED.country,
-			language   = EXCLUDED.language,
-			interests  = EXCLUDED.interests,
-			status     = EXCLUDED.status,
-			bio        = EXCLUDED.bio,
-			avatar_url = EXCLUDED.avatar_url,
-			updated_at = EXCLUDED.updated_at,
-			last_seen  = EXCLUDED.last_seen,
-			is_active  = EXCLUDED.is_active`
+		INSERT INTO users (
+			id, username, email, age, gender, country, language, interests,
+			status, bio, avatar_url, created_at, updated_at, last_seen, is_active
+		) VALUES ($1,$2,$3,NULL,NULL,NULL,NULL,$4,$5,$6,$7,$8,$9,$10,$11)
+		ON CONFLICT (id) DO NOTHING`
 
 	_, err := r.db.ExecContext(ctx, query,
-		user.ID(),
-		user.Username(),
-		user.Email().Value(),
-		user.Age(),
-		user.Gender(),
-		user.Country(),
-		user.Language(),
-		pq.Array(user.Interests()),
-		user.Status().String(),
-		user.Bio(),
-		user.AvatarURL(),
-		user.CreatedAt(),
-		user.UpdatedAt(),
-		user.LastSeen(),
-		user.IsActive(),
+		user.ID(), user.Username(), user.Email().Value(), pq.Array(user.Interests()),
+		user.Status().String(), user.Bio(), user.AvatarURL(), user.CreatedAt(),
+		user.UpdatedAt(), user.LastSeen(), user.IsActive(),
 	)
-	return err
-}
-
-func (r *PostgresUserRepository) FindByID(ctx context.Context, id string) (*entities.User, error) {
-	return r.scanOne(ctx,
-		`SELECT id,username,email,age,gender,country,language,interests,status,bio,avatar_url,created_at,updated_at,last_seen,is_active
-		 FROM users WHERE id = $1`, id)
-}
-
-func (r *PostgresUserRepository) FindByEmail(ctx context.Context, email valueobjects.Email) (*entities.User, error) {
-	return r.scanOne(ctx,
-		`SELECT id,username,email,age,gender,country,language,interests,status,bio,avatar_url,created_at,updated_at,last_seen,is_active
-		 FROM users WHERE email = $1`, email.Value())
-}
-
-func (r *PostgresUserRepository) FindByUsername(ctx context.Context, username string) (*entities.User, error) {
-	return r.scanOne(ctx,
-		`SELECT id,username,email,age,gender,country,language,interests,status,bio,avatar_url,created_at,updated_at,last_seen,is_active
-		 FROM users WHERE username = $1`, username)
-}
-
-func (r *PostgresUserRepository) Delete(ctx context.Context, id string) error {
-	_, err := r.db.ExecContext(ctx,
-		`UPDATE users SET is_active = false, updated_at = NOW() WHERE id = $1`, id)
-	return err
-}
-
-func (r *PostgresUserRepository) ExistsByEmail(ctx context.Context, email valueobjects.Email) (bool, error) {
-	var exists bool
-	err := r.db.QueryRowContext(ctx,
-		`SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)`, email.Value()).Scan(&exists)
-	return exists, err
-}
-
-func (r *PostgresUserRepository) ExistsByUsername(ctx context.Context, username string) (bool, error) {
-	var exists bool
-	err := r.db.QueryRowContext(ctx,
-		`SELECT EXISTS(SELECT 1 FROM users WHERE username = $1)`, username).Scan(&exists)
-	return exists, err
-}
-
-func (r *PostgresUserRepository) FindActiveUsers(ctx context.Context, limit, offset int) ([]*entities.User, error) {
-	rows, err := r.db.QueryContext(ctx,
-		`SELECT id,username,email,age,gender,country,language,interests,status,bio,avatar_url,created_at,updated_at,last_seen,is_active
-		 FROM users WHERE is_active = true ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
-		limit, offset)
 	if err != nil {
-		return nil, err
+		return mapWriteError(err)
 	}
-	defer rows.Close()
-
-	var users []*entities.User
-	for rows.Next() {
-		u, err := scanUser(rows)
-		if err != nil {
-			return nil, err
-		}
-		users = append(users, u)
-	}
-	return users, rows.Err()
+	return nil
 }
 
-func (r *PostgresUserRepository) UpdateStatus(ctx context.Context, id string, status valueobjects.Status) error {
-	_, err := r.db.ExecContext(ctx,
-		`UPDATE users SET status = $1, last_seen = NOW(), updated_at = NOW() WHERE id = $2`,
-		status.String(), id)
-	return err
-}
+func (r *PostgresUserRepository) Save(ctx context.Context, user *users.User) error {
+	const query = `
+		UPDATE users SET
+			username = $2, age = NULLIF($3, 0), gender = NULLIF($4, ''),
+			country = NULLIF($5, ''), language = NULLIF($6, ''), interests = $7,
+			status = $8, bio = $9, avatar_url = $10, updated_at = $11,
+			last_seen = $12, is_active = $13
+		WHERE id = $1`
 
-// --- helpers ---
-
-// scanOne executes a query expected to return a single user row.
-func (r *PostgresUserRepository) scanOne(ctx context.Context, query string, args ...any) (*entities.User, error) {
-	row := r.db.QueryRowContext(ctx, query, args...)
-	u, err := scanUserRow(row)
+	result, err := r.db.ExecContext(ctx, query,
+		user.ID(), user.Username(), user.Age(), user.Gender(), user.Country(),
+		user.Language(), pq.Array(user.Interests()), user.Status().String(),
+		user.Bio(), user.AvatarURL(), user.UpdatedAt(), user.LastSeen(), user.IsActive(),
+	)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, entities.ErrUserNotFound
-		}
-		return nil, err
+		return mapWriteError(err)
 	}
-	return u, nil
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("read updated row count: %w", err)
+	}
+	if rows == 0 {
+		return users.ErrUserNotFound
+	}
+	return nil
 }
 
-// scanner is satisfied by both *sql.Row and *sql.Rows.
+func (r *PostgresUserRepository) FindByID(ctx context.Context, id string) (*users.User, error) {
+	return r.findOne(ctx, selectUser+` WHERE id = $1`, id)
+}
+
+func (r *PostgresUserRepository) FindByEmail(ctx context.Context, email users.Email) (*users.User, error) {
+	return r.findOne(ctx, selectUser+` WHERE email = $1`, email.Value())
+}
+
+const selectUser = `
+	SELECT id, username, email, age, gender, country, language, interests,
+	       status, bio, avatar_url, created_at, updated_at, last_seen, is_active
+	FROM users`
+
+func (r *PostgresUserRepository) findOne(ctx context.Context, query string, args ...any) (*users.User, error) {
+	user, err := scanUser(r.db.QueryRowContext(ctx, query, args...))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, users.ErrUserNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("scan user: %w", err)
+	}
+	return user, nil
+}
+
 type scanner interface {
 	Scan(dest ...any) error
 }
 
-func scanUserRow(s *sql.Row) (*entities.User, error) {
+func scanUser(row scanner) (*users.User, error) {
 	var (
-		id, username, emailStr string
-		age                    sql.NullInt32
-		gender, country        sql.NullString
-		language               sql.NullString
-		interests              []string
-		statusStr              string
-		bio, avatarURL         sql.NullString
-		createdAt, updatedAt   sql.NullTime
-		lastSeen               sql.NullTime
-		isActive               bool
+		id, username, rawEmail         string
+		age                            sql.NullInt32
+		gender, country, language      sql.NullString
+		interests                      []string
+		rawStatus                      string
+		bio, avatarURL                 sql.NullString
+		createdAt, updatedAt, lastSeen sql.NullTime
+		isActive                       bool
 	)
-
-	if err := s.Scan(&id, &username, &emailStr, &age, &gender, &country, &language,
-		pq.Array(&interests), &statusStr, &bio, &avatarURL,
-		&createdAt, &updatedAt, &lastSeen, &isActive); err != nil {
+	if err := row.Scan(
+		&id, &username, &rawEmail, &age, &gender, &country, &language,
+		pq.Array(&interests), &rawStatus, &bio, &avatarURL,
+		&createdAt, &updatedAt, &lastSeen, &isActive,
+	); err != nil {
 		return nil, err
 	}
 
-	return reconstruct(id, username, emailStr, int(age.Int32), gender.String, country.String, language.String,
-		interests, statusStr, bio.String, avatarURL.String, createdAt, updatedAt, lastSeen, isActive)
-}
-
-func scanUser(rows *sql.Rows) (*entities.User, error) {
-	var (
-		id, username, emailStr string
-		age                    sql.NullInt32
-		gender, country        sql.NullString
-		language               sql.NullString
-		interests              []string
-		statusStr              string
-		bio, avatarURL         sql.NullString
-		createdAt, updatedAt   sql.NullTime
-		lastSeen               sql.NullTime
-		isActive               bool
-	)
-
-	if err := rows.Scan(&id, &username, &emailStr, &age, &gender, &country, &language,
-		pq.Array(&interests), &statusStr, &bio, &avatarURL,
-		&createdAt, &updatedAt, &lastSeen, &isActive); err != nil {
-		return nil, err
-	}
-
-	return reconstruct(id, username, emailStr, int(age.Int32), gender.String, country.String, language.String,
-		interests, statusStr, bio.String, avatarURL.String, createdAt, updatedAt, lastSeen, isActive)
-}
-
-func reconstruct(
-	id, username, emailStr string, age int,
-	gender, country, language string,
-	interests []string, statusStr, bio, avatarURL string,
-	createdAt, updatedAt, lastSeen sql.NullTime, isActive bool,
-) (*entities.User, error) {
-	email, err := valueobjects.NewEmail(emailStr)
+	email, err := users.NewEmail(rawEmail)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("invalid persisted email: %w", err)
 	}
-	status, err := valueobjects.NewStatus(statusStr)
+	status, err := users.NewStatus(rawStatus)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("invalid persisted status: %w", err)
 	}
-	return entities.ReconstructUser(
-		id, username, email, age, gender, country, language,
-		interests, status, bio, avatarURL,
+	return users.ReconstructUser(
+		id, username, email, int(age.Int32), gender.String, country.String,
+		language.String, interests, status, bio.String, avatarURL.String,
 		createdAt.Time, updatedAt.Time, lastSeen.Time, isActive,
 	), nil
 }
+
+func mapWriteError(err error) error {
+	var pqErr *pq.Error
+	if errors.As(err, &pqErr) && pqErr.Code == "23505" {
+		return users.ErrUserAlreadyExists
+	}
+	return fmt.Errorf("persist user: %w", err)
+}
+
+var _ users.UserRepository = (*PostgresUserRepository)(nil)

@@ -1,22 +1,8 @@
 package main
 
 import (
-	"XTalk/pkg/database"
-	"XTalk/pkg/grpctls"
-	"XTalk/pkg/health"
-	"XTalk/pkg/logger"
-	"XTalk/pkg/metrics"
-	"XTalk/pkg/requestid"
-	"XTalk/pkg/tracing"
-	"XTalk/services/user/application/users/create_user"
-	"XTalk/services/user/application/users/delete_user"
-	"XTalk/services/user/application/users/get_user"
-	"XTalk/services/user/application/users/get_user_by_email"
-	"XTalk/services/user/application/users/update_status"
-	"XTalk/services/user/application/users/update_user"
-	"XTalk/services/user/application/validation"
-	messaging "XTalk/services/user/infrastructure/messaging/rabbitmq"
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -25,143 +11,180 @@ import (
 	"syscall"
 	"time"
 
+	"XTalk/pkg/database"
+	"XTalk/pkg/grpctls"
+	"XTalk/pkg/health"
+	"XTalk/pkg/logger"
+	"XTalk/pkg/metrics"
+	"XTalk/pkg/requestid"
+	"XTalk/pkg/tracing"
+	userpb "XTalk/proto/user"
+	appevents "XTalk/services/user/application/events"
+	userapp "XTalk/services/user/application/users"
+	userconfig "XTalk/services/user/infrastructure/config"
+	"XTalk/services/user/infrastructure/messaging/rabbitmq"
+	"XTalk/services/user/infrastructure/repositories"
+	transportgrpc "XTalk/services/user/infrastructure/transport/grpc"
+
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
 
+const shutdownTimeout = 5 * time.Second
+
 func main() {
 	log := logger.New()
-	defer log.Sync()
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	err := run(ctx, log)
+	stop()
+	if err != nil {
+		log.Error("user service stopped with an error", zap.Error(err))
+	}
+	_ = log.Sync()
+	if err != nil {
+		os.Exit(1)
+	}
+}
 
-	cfg := config.LoadConfig()
+func run(ctx context.Context, log *zap.Logger) error {
+	serviceCtx, cancelService := context.WithCancel(ctx)
+	defer cancelService()
 
-	// OpenTelemetry tracing
-	shutdownTracer, err := tracing.Init(context.Background(), tracing.Config{
+	cfg := userconfig.LoadConfig()
+
+	shutdownTracer, err := tracing.Init(ctx, tracing.Config{
 		ServiceName: "user-service",
 		Endpoint:    cfg.OTELEndpoint,
 	}, log)
 	if err != nil {
-		log.Fatal("failed to init tracing", zap.Error(err))
-	}
-	defer shutdownTracer(context.Background())
-
-	// PostgreSQL
-	db, err := database.Connect(database.Config{
-		Host:     cfg.DBHost,
-		Port:     cfg.DBPort,
-		User:     cfg.DBUser,
-		Password: cfg.DBPassword,
-		Name:     cfg.DBName,
-		SSL:      cfg.DBSSL,
-	}, log)
-	if err != nil {
-		log.Fatal("failed to connect to database", zap.Error(err))
+		return fmt.Errorf("initialize tracing: %w", err)
 	}
 	defer func() {
-		if err := db.Close(); err != nil {
-			log.Error("error closing database", zap.Error(err))
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+		defer cancel()
+		if err := shutdownTracer(shutdownCtx); err != nil {
+			log.Error("shutdown tracing", zap.Error(err))
 		}
 	}()
 
-	// Infrastructure adapters
-	userRepo := persistence.NewPostgresUserRepository(db)
-	validator := validation.NewInputValidator()
-
-	// Application handlers
-	createUserHandler := create_user.NewHandler(userRepo)
-	updateUserHandler := update_user.NewHandler(userRepo, validator)
-	updateStatusHandler := update_status.NewHandler(userRepo)
-	deleteUserHandler := delete_user.NewHandler(userRepo)
-	getUserHandler := get_user.NewHandler(userRepo)
-	getUserByEmailHandler := get_user_by_email.NewHandler(userRepo)
-
-	// RabbitMQ event consumer
-	eventConsumer, err := messaging.NewRabbitMQEventConsumer(cfg.RabbitMQURL, userRepo, createUserHandler, log)
+	db, err := database.Connect(database.Config{
+		Host: cfg.DBHost, Port: cfg.DBPort, User: cfg.DBUser,
+		Password: cfg.DBPassword, Name: cfg.DBName, SSL: cfg.DBSSL,
+	}, log)
 	if err != nil {
-		log.Warn("failed to initialize RabbitMQ consumer (event-driven updates disabled)", zap.Error(err))
-	} else {
-		defer eventConsumer.Close()
-		if err := eventConsumer.Start(context.Background()); err != nil {
-			log.Warn("failed to start RabbitMQ consumer", zap.Error(err))
+		return fmt.Errorf("connect to database: %w", err)
+	}
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Error("close database", zap.Error(err))
 		}
+	}()
+
+	repository := repositories.NewPostgresUserRepository(db)
+	users := userapp.NewService(repository)
+	eventHandler := appevents.NewHandler(users)
+
+	consumer, err := rabbitmq.NewConsumer(cfg.RabbitMQURL, eventHandler, log)
+	if err != nil {
+		return fmt.Errorf("initialize integration-event consumer: %w", err)
+	}
+	defer func() {
+		if err := consumer.Close(); err != nil {
+			log.Error("close integration-event consumer", zap.Error(err))
+		}
+	}()
+	if err := consumer.Start(serviceCtx); err != nil {
+		return fmt.Errorf("start integration-event consumer: %w", err)
 	}
 
-	// gRPC service
-	userService := grpcServer.NewUserGRPCService(
-		createUserHandler,
-		updateUserHandler,
-		updateStatusHandler,
-		deleteUserHandler,
-		getUserHandler,
-		getUserByEmailHandler,
-	)
-
-	// Prometheus gRPC metrics
-	grpcMetrics := metrics.NewGRPCMetrics("user_service")
-
-	// gRPC server options
-	serverOpts := []grpc.ServerOption{
+	serverOptions := []grpc.ServerOption{
 		grpc.MaxRecvMsgSize(4 * 1024 * 1024),
 		grpc.StatsHandler(tracing.NewServerHandler()),
 		grpc.ChainUnaryInterceptor(
 			requestid.UnaryServerInterceptor(),
-			metrics.UnaryServerInterceptor(grpcMetrics),
+			metrics.UnaryServerInterceptor(metrics.NewGRPCMetrics("user_service")),
 		),
 	}
-	if tlsCreds, err := grpctls.ServerOptions(cfg.TLSCertFile, cfg.TLSKeyFile); err != nil {
-		log.Fatal("failed to load TLS credentials", zap.Error(err))
-	} else if tlsCreds != nil {
-		serverOpts = append(serverOpts, tlsCreds)
+	tlsOption, err := grpctls.ServerOptions(cfg.TLSCertFile, cfg.TLSKeyFile)
+	if err != nil {
+		return fmt.Errorf("load gRPC TLS credentials: %w", err)
+	}
+	if tlsOption != nil {
+		serverOptions = append(serverOptions, tlsOption)
 		log.Info("gRPC TLS enabled")
 	}
 
-	grpcSrv := grpc.NewServer(serverOpts...)
-	pb.RegisterUserServiceServer(grpcSrv, userService)
-
-	// gRPC health check
-	healthSrv := health.Register(grpcSrv)
-
-	// Prometheus metrics HTTP server
-	metricsMux := http.NewServeMux()
-	metricsMux.Handle("/metrics", promhttp.HandlerFor(metrics.Registry, promhttp.HandlerOpts{}))
-	metricsAddr := ":" + cfg.MetricsPort
-	metricsSrv := &http.Server{Addr: metricsAddr, Handler: metricsMux}
-	go func() {
-		log.Info("metrics server listening", zap.String("addr", metricsAddr))
-		if err := metricsSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Error("metrics server error", zap.Error(err))
-		}
-	}()
-
-	// gRPC listener
-	listener, err := net.Listen("tcp", fmt.Sprintf(":%s", cfg.Port))
+	listener, err := net.Listen("tcp", ":"+cfg.Port)
 	if err != nil {
-		log.Fatal("failed to listen", zap.Error(err))
+		return fmt.Errorf("listen for gRPC: %w", err)
 	}
 
+	grpcServer := grpc.NewServer(serverOptions...)
+	userpb.RegisterUserServiceServer(grpcServer, transportgrpc.NewUserService(users, log))
+	healthServer := health.Register(grpcServer)
+
+	metricsServer := &http.Server{
+		Addr:              ":" + cfg.MetricsPort,
+		Handler:           metricsHandler(),
+		ReadHeaderTimeout: 5 * time.Second,
+	}
+
+	grpcErrors := make(chan error, 1)
 	go func() {
-		log.Info("User Service listening", zap.String("port", cfg.Port))
-		if err := grpcSrv.Serve(listener); err != nil {
-			log.Fatal("failed to serve", zap.Error(err))
-		}
+		log.Info("user gRPC server listening", zap.String("address", listener.Addr().String()))
+		grpcErrors <- grpcServer.Serve(listener)
 	}()
+	metricsErrors := make(chan error, 1)
+	go func() {
+		log.Info("user metrics server listening", zap.String("address", metricsServer.Addr))
+		metricsErrors <- metricsServer.ListenAndServe()
+	}()
+	health.SetReady(healthServer, "user")
 
-	health.SetReady(healthSrv, "user")
-
-	// Graceful shutdown
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-
-	log.Info("shutting down User Service...")
-	health.SetNotReady(healthSrv, "user")
-	grpcSrv.GracefulStop()
-
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer shutdownCancel()
-	if err := metricsSrv.Shutdown(shutdownCtx); err != nil {
-		log.Error("metrics server shutdown error", zap.Error(err))
+	var runErr error
+	select {
+	case <-ctx.Done():
+		log.Info("user service shutdown requested")
+	case err := <-grpcErrors:
+		if err != nil && !errors.Is(err, grpc.ErrServerStopped) {
+			runErr = fmt.Errorf("serve gRPC: %w", err)
+		}
+	case err := <-metricsErrors:
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			runErr = fmt.Errorf("serve metrics: %w", err)
+		}
+	case err := <-consumer.Failures():
+		runErr = fmt.Errorf("consume integration events: %w", err)
 	}
-	log.Info("User Service stopped")
+
+	cancelService()
+	health.SetNotReady(healthServer, "user")
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer cancel()
+	if err := metricsServer.Shutdown(shutdownCtx); err != nil {
+		runErr = errors.Join(runErr, fmt.Errorf("shutdown metrics server: %w", err))
+	}
+	gracefulStop(shutdownCtx, grpcServer)
+	log.Info("user service stopped")
+	return runErr
+}
+
+func metricsHandler() http.Handler {
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", promhttp.HandlerFor(metrics.Registry, promhttp.HandlerOpts{}))
+	return mux
+}
+
+func gracefulStop(ctx context.Context, server *grpc.Server) {
+	done := make(chan struct{})
+	go func() {
+		server.GracefulStop()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-ctx.Done():
+		server.Stop()
+	}
 }

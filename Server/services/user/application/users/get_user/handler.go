@@ -3,6 +3,7 @@ package get_user
 import (
 	"context"
 
+	"XTalk/services/user/application/users/readmodel"
 	"XTalk/services/user/domain/users"
 )
 
@@ -15,26 +16,13 @@ func NewHandler(userRepo users.UserRepository) *Handler {
 }
 
 func (h *Handler) Handle(ctx context.Context, query Query) (*Response, error) {
+	if err := users.ValidateID(query.UserID); err != nil {
+		return nil, err
+	}
 	user, err := h.userRepo.FindByID(ctx, query.UserID)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Response{
-		ID:        user.ID(),
-		Username:  user.Username(),
-		Email:     user.Email().Value(),
-		Age:       user.Age(),
-		Gender:    user.Gender(),
-		Country:   user.Country(),
-		Language:  user.Language(),
-		Interests: user.Interests(),
-		Status:    user.Status().String(),
-		Bio:       user.Bio(),
-		AvatarURL: user.AvatarURL(),
-		CreatedAt: user.CreatedAt(),
-		UpdatedAt: user.UpdatedAt(),
-		LastSeen:  user.LastSeen(),
-		IsActive:  user.IsActive(),
-	}, nil
+	return readmodel.FromDomain(user), nil
 }

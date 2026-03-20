@@ -15,6 +15,9 @@ func NewHandler(userRepo users.UserRepository) *Handler {
 }
 
 func (h *Handler) Handle(ctx context.Context, cmd Command) (*Result, error) {
+	if err := users.ValidateID(cmd.UserID); err != nil {
+		return nil, err
+	}
 	status, err := users.NewStatus(cmd.Status)
 	if err != nil {
 		return nil, err
@@ -24,20 +27,16 @@ func (h *Handler) Handle(ctx context.Context, cmd Command) (*Result, error) {
 	if err != nil {
 		return nil, err
 	}
-	if !user.IsActive() {
-		return nil, users.ErrUserInactive
+	if err := user.UpdateStatus(status); err != nil {
+		return nil, err
 	}
-
-	user.UpdateStatus(status)
 
 	if err := h.userRepo.Save(ctx, user); err != nil {
 		return nil, err
 	}
 
 	return &Result{
-		UserID:  user.ID(),
-		Status:  status.String(),
-		Success: true,
-		Message: "Status updated successfully",
+		UserID: user.ID(),
+		Status: status.String(),
 	}, nil
 }

@@ -40,6 +40,7 @@ vendor/
 
 # Generated files
 *.pb.go
+!proto/user/*.pb.go
 
 # Docker volumes
 postgres_data/

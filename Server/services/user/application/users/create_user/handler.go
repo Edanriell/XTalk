@@ -15,11 +15,14 @@ func NewHandler(userRepo users.UserRepository) *Handler {
 }
 
 func (h *Handler) Handle(ctx context.Context, cmd Command) error {
-	email, err := users.CreateEmail(cmd.Email)
+	email, err := users.NewEmail(cmd.Email)
 	if err != nil {
 		return err
 	}
 
-	user := users.CreateUser(cmd.UserID, cmd.Username, email, 0, "", "", "")
-	return h.userRepo.Save(ctx, user)
+	user, err := users.NewUser(cmd.UserID, cmd.Username, email)
+	if err != nil {
+		return err
+	}
+	return h.userRepo.Create(ctx, user)
 }

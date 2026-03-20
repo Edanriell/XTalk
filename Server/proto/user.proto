@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package user;
 
-option go_package = "github.com/yourusername/connect/proto/user";
+option go_package = "XTalk/proto/user";
 
 service UserService {
   rpc GetUser(GetUserRequest) returns (GetUserResponse);

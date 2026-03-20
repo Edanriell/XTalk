@@ -1,8 +1,9 @@
-.PHONY: help proto build run-dev run-prod docker-up docker-down clean test
+.PHONY: help proto proto-user build run-dev run-prod docker-up docker-down clean test
 
 help:
 	@echo "Available commands:"
 	@echo "  make proto       - Generate protobuf code"
+	@echo "  make proto-user  - Generate user-service protobuf code"
 	@echo "  make build       - Build all services"
 	@echo "  make run-dev     - Run all services locally"
 	@echo "  make run-prod    - Run with Docker Compose"
@@ -13,14 +14,21 @@ help:
 
 proto:
 	@echo "Generating protobuf code..."
-	protoc --go_out=. --go_opt=paths=source_relative \
-		--go-grpc_out=. --go-grpc_opt=paths=source_relative \
-		proto/*.proto
+	@for service in auth chat matching message user; do \
+		protoc -I proto --go_out=proto/$$service --go_opt=paths=source_relative \
+			--go-grpc_out=proto/$$service --go-grpc_opt=paths=source_relative \
+			proto/$$service.proto; \
+	done
+
+proto-user:
+	protoc -I proto --go_out=proto/user --go_opt=paths=source_relative \
+		--go-grpc_out=proto/user --go-grpc_opt=paths=source_relative \
+		proto/user.proto
 
 build:
 	@echo "Building all services..."
 	go build -o bin/auth-service ./auth-service
-	go build -o bin/user-service ./user-service
+	go build -o bin/user-service ./services/user
 	go build -o bin/chat-service ./chat-service
 	go build -o bin/message-service ./message-service
 	go build -o bin/api-gateway ./api-gateway
