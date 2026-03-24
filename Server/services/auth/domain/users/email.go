@@ -1,1 +1,19 @@
 package users
+
+import "XTalk/pkg/validation"
+
+type Email struct {
+	value string
+}
+
+func NewEmail(value string) (Email, error) {
+	normalised, err := validation.ValidateEmail(value)
+	if err != nil {
+		return Email{}, err
+	}
+	return Email{value: normalised}, nil
+}
+
+func (e Email) String() string {
+	return e.value
+}
