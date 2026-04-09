@@ -1,9 +1,11 @@
 package database
 
 import (
+	"database/sql"
 	"time"
 
 	_ "github.com/lib/pq"
+	"go.uber.org/zap"
 )
 
 type Config struct {
@@ -24,6 +26,6 @@ const (
 	defaultMaxDelay     = 30 * time.Second
 )
 
-func Connect() {
+func Connect(cfg Config, log *zap.Logger) (*sql.DB, error) {
 
 }
