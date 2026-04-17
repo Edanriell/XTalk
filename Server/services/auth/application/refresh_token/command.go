@@ -1,1 +1,5 @@
-package login
+package refresh_token
+
+type Command struct {
+	RefreshToken string
+}
