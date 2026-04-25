@@ -1,4 +1,4 @@
-package entities
+package chat
 
 import (
 	"time"
