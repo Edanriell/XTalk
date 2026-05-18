@@ -1,7 +1,7 @@
 package create_chat
 
 import (
-	"XTalk/services/message/application/interfaces"
+	"XTalk/services/chat/application/application/interfaces"
 	"context"
 )
 
