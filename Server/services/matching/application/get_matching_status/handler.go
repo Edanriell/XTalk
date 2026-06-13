@@ -1,5 +1,10 @@
 package get_matching_status
 
+import (
+	repositories "XTalk/services/matching/domain/matches"
+	"context"
+)
+
 type Handler struct {
 	queueRepo        repositories.MatchingQueueRepository
 	matchHistoryRepo repositories.MatchHistoryRepository
@@ -59,4 +64,3 @@ func (h *Handler) Handle(ctx context.Context, query Query) (*Result, error) {
 		Message: "Not in queue and no active matches",
 	}, nil
 }
-s
