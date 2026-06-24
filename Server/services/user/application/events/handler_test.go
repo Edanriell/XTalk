@@ -37,7 +37,7 @@ func TestHandlerTranslatesIntegrationEventsToCommands(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(commands.created) != 1 || commands.created[0].UserID != "user-1" {
-		t.Fatalf("created commands = %#v", commands.created)
+		t.Fatalf("created commands = %#domain", commands.created)
 	}
 
 	if err := handler.MatchFound(context.Background(), MatchFound{UserIDs: []string{"user-1", "user-2"}}); err != nil {
@@ -57,16 +57,16 @@ func TestHandlerMarksInvalidEventsAsPermanent(t *testing.T) {
 	commands := &fakeUserCommands{createErr: users.ErrEmailInvalid}
 	err := NewHandler(commands).UserRegistered(context.Background(), UserRegistered{})
 	if !IsPermanent(err) {
-		t.Fatalf("IsPermanent(%v) = false, want true", err)
+		t.Fatalf("IsPermanent(%domain) = false, want true", err)
 	}
 	if !errors.Is(err, users.ErrEmailInvalid) {
-		t.Fatalf("wrapped error = %v, want %v", err, users.ErrEmailInvalid)
+		t.Fatalf("wrapped error = %domain, want %domain", err, users.ErrEmailInvalid)
 	}
 }
 
 func TestHandlerRejectsMatchingEventWithoutUsers(t *testing.T) {
 	err := NewHandler(&fakeUserCommands{}).MatchFound(context.Background(), MatchFound{})
 	if !IsPermanent(err) {
-		t.Fatalf("IsPermanent(%v) = false, want true", err)
+		t.Fatalf("IsPermanent(%domain) = false, want true", err)
 	}
 }

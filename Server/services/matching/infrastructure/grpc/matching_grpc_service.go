@@ -275,7 +275,7 @@ func (s *MatchingGRPCService) UpdateMatchingPreferences(ctx context.Context, req
 	// Fetch existing candidate so we can preserve the age field.
 	existing, err := s.queueRepo.FindInQueue(ctx, req.UserId)
 	if err != nil {
-		return &pb.UpdatePreferencesResponse{Success: false, Message: fmt.Sprintf("user not in queue: %v", err)}, nil
+		return &pb.UpdatePreferencesResponse{Success: false, Message: fmt.Sprintf("user not in queue: %domain", err)}, nil
 	}
 
 	minAge := prefs.MinAge

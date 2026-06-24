@@ -10,7 +10,7 @@ import (
 func TestNewEmailNormalizesAddress(t *testing.T) {
 	email, err := users.NewEmail("  Person@Example.COM ")
 	if err != nil {
-		t.Fatalf("NewEmail() error = %v", err)
+		t.Fatalf("NewEmail() error = %domain", err)
 	}
 	if got, want := email.Value(), "person@example.com"; got != want {
 		t.Fatalf("Email.Value() = %q, want %q", got, want)
@@ -20,7 +20,7 @@ func TestNewEmailNormalizesAddress(t *testing.T) {
 func TestNewUserRejectsZeroEmail(t *testing.T) {
 	_, err := users.NewUser("user-1", "person_1", users.Email{})
 	if !errors.Is(err, users.ErrEmailRequired) {
-		t.Fatalf("NewUser() error = %v, want %v", err, users.ErrEmailRequired)
+		t.Fatalf("NewUser() error = %domain, want %domain", err, users.ErrEmailRequired)
 	}
 }
 
@@ -45,7 +45,7 @@ func TestNewProfileRejectsInvalidInput(t *testing.T) {
 			test.change(&input)
 			_, err := users.NewProfile(input)
 			if !errors.Is(err, test.want) {
-				t.Fatalf("NewProfile() error = %v, want %v", err, test.want)
+				t.Fatalf("NewProfile() error = %domain, want %domain", err, test.want)
 			}
 		})
 	}
@@ -57,12 +57,12 @@ func TestUpdateProfileIsAtomicAndDefensivelyCopiesInterests(t *testing.T) {
 	input.Interests = []string{" Go ", "go", "DDD"}
 	profile, err := users.NewProfile(input)
 	if err != nil {
-		t.Fatalf("NewProfile() error = %v", err)
+		t.Fatalf("NewProfile() error = %domain", err)
 	}
 	input.Interests[0] = "changed"
 
 	if err := user.UpdateProfile(profile); err != nil {
-		t.Fatalf("UpdateProfile() error = %v", err)
+		t.Fatalf("UpdateProfile() error = %domain", err)
 	}
 	if got, want := user.Country(), "LV"; got != want {
 		t.Fatalf("Country() = %q, want %q", got, want)
@@ -72,7 +72,7 @@ func TestUpdateProfileIsAtomicAndDefensivelyCopiesInterests(t *testing.T) {
 	}
 	interests := user.Interests()
 	if len(interests) != 2 || interests[0] != "Go" || interests[1] != "DDD" {
-		t.Fatalf("Interests() = %#v, want [Go DDD]", interests)
+		t.Fatalf("Interests() = %#domain, want [Go DDD]", interests)
 	}
 	interests[0] = "mutated"
 	if user.Interests()[0] != "Go" {
@@ -88,21 +88,21 @@ func TestInactiveUserCannotBeChanged(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := user.UpdateStatus(status); !errors.Is(err, users.ErrUserInactive) {
-		t.Fatalf("UpdateStatus() error = %v, want %v", err, users.ErrUserInactive)
+		t.Fatalf("UpdateStatus() error = %domain, want %domain", err, users.ErrUserInactive)
 	}
 	profile, err := users.NewProfile(validProfileInput())
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := user.UpdateProfile(profile); !errors.Is(err, users.ErrUserInactive) {
-		t.Fatalf("UpdateProfile() error = %v, want %v", err, users.ErrUserInactive)
+		t.Fatalf("UpdateProfile() error = %domain, want %domain", err, users.ErrUserInactive)
 	}
 }
 
 func TestUpdateStatusRejectsInvalidStatusValue(t *testing.T) {
 	user := newUser(t)
 	if err := user.UpdateStatus(users.Status("busy")); !errors.Is(err, users.ErrStatusInvalid) {
-		t.Fatalf("UpdateStatus() error = %v, want %v", err, users.ErrStatusInvalid)
+		t.Fatalf("UpdateStatus() error = %domain, want %domain", err, users.ErrStatusInvalid)
 	}
 }
 
