@@ -1,6 +1,7 @@
 package config
 
 import (
+	pkgcfg "XTalk/pkg/config"
 	"strconv"
 	"time"
 )

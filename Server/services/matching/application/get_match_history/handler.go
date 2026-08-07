@@ -1,7 +1,7 @@
 package get_match_history
 
 import (
-	repositories "XTalk/services/matching/domain/matches"
+	repositories "XTalk/services/matching/domain/repositories"
 	"context"
 	"time"
 )

@@ -3,4 +3,5 @@ package get_messages
 type Response struct {
 	Messages []MessageDTO
 }
-4
+
+type Result = Response

@@ -9,7 +9,7 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o message-service ./message-service
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -o message-service ./services/message
 
 FROM alpine:3.20
 RUN apk --no-cache add ca-certificates && \

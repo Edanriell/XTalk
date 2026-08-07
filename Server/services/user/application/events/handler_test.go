@@ -37,7 +37,7 @@ func TestHandlerTranslatesIntegrationEventsToCommands(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(commands.created) != 1 || commands.created[0].UserID != "user-1" {
-		t.Fatalf("created commands = %#domain", commands.created)
+		t.Fatalf("created commands = %#v", commands.created)
 	}
 
 	if err := handler.MatchFound(context.Background(), MatchFound{UserIDs: []string{"user-1", "user-2"}}); err != nil {

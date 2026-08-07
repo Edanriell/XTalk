@@ -10,3 +10,5 @@ type Response struct {
 	MatchedWith string  // (only if matched)
 	MatchScore  float64 // (only if matched)
 }
+
+type Result = Response

@@ -3,7 +3,7 @@ package interfaces
 import (
 	"context"
 
-	"github.com/yourusername/connect/message-service/domain/events"
+	"XTalk/services/message/domain/events"
 )
 
 // EventPublisher defines the interface for publishing domain events

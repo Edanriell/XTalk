@@ -2,6 +2,7 @@ package refresh_token
 
 import (
 	"XTalk/services/auth/application/interfaces"
+	"XTalk/services/auth/domain/users"
 	"context"
 	"errors"
 	"time"
@@ -14,14 +15,14 @@ var (
 
 // Handler handles the refresh token command
 type Handler struct {
-	userRepo       repositories.UserRepository
+	userRepo       users.UserRepository
 	tokenValidator interfaces.TokenValidator
 	tokenGenerator interfaces.TokenGenerator
 	tokenBlacklist interfaces.TokenBlacklist
 }
 
 func NewHandler(
-	userRepo repositories.UserRepository,
+	userRepo users.UserRepository,
 	tokenValidator interfaces.TokenValidator,
 	tokenGenerator interfaces.TokenGenerator,
 	tokenBlacklist interfaces.TokenBlacklist,

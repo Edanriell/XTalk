@@ -2,10 +2,13 @@ package get_messages
 
 import (
 	"XTalk/services/message/application/interfaces"
-	repositories "XTalk/services/message/domain/messages"
+	"XTalk/services/message/domain/repositories"
 	"context"
+	"errors"
 	"time"
 )
+
+var ErrNotChatParticipant = errors.New("user is not a chat participant")
 
 // MessageDTO represents a message data transfer object
 type MessageDTO struct {

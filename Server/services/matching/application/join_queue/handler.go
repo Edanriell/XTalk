@@ -3,8 +3,10 @@ package join_queue
 import (
 	"XTalk/services/matching/application/interfaces"
 	"XTalk/services/matching/application/services"
-	repositories "XTalk/services/matching/domain/matches"
-	"XTalk/services/matching/domain/matches/events"
+	"XTalk/services/matching/domain/entities"
+	"XTalk/services/matching/domain/events"
+	"XTalk/services/matching/domain/repositories"
+	"XTalk/services/matching/domain/valueobjects"
 	"context"
 	"fmt"
 	"time"

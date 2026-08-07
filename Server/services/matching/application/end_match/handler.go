@@ -1,8 +1,10 @@
 package end_match
 
 import (
-	repositories "XTalk/services/matching/domain/matches"
-	"XTalk/services/matching/domain/matches/events"
+	"XTalk/services/matching/application/interfaces"
+	"XTalk/services/matching/domain/entities"
+	"XTalk/services/matching/domain/events"
+	"XTalk/services/matching/domain/repositories"
 	"context"
 	"time"
 

@@ -12,13 +12,13 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 
-	"github.com/yourusername/connect/api-gateway/circuitbreaker"
-	"github.com/yourusername/connect/api-gateway/config"
-	"github.com/yourusername/connect/api-gateway/handlers"
-	"github.com/yourusername/connect/api-gateway/messaging"
-	"github.com/yourusername/connect/api-gateway/middleware"
-	"github.com/yourusername/connect/pkg/logger"
-	"github.com/yourusername/connect/pkg/metrics"
+	"XTalk/gateway/circuitbreaker"
+	"XTalk/gateway/config"
+	"XTalk/gateway/handlers"
+	"XTalk/gateway/messaging"
+	"XTalk/gateway/middleware"
+	"XTalk/pkg/logger"
+	"XTalk/pkg/metrics"
 )
 
 func main() {

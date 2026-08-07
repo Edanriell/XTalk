@@ -3,8 +3,8 @@ package services
 import (
 	"math"
 
-	"github.com/yourusername/connect/matching-service/domain/entities"
-	"github.com/yourusername/connect/matching-service/domain/valueobjects"
+	"XTalk/services/matching/domain/entities"
+	"XTalk/services/matching/domain/valueobjects"
 )
 
 // MatchingAlgorithm implements the matching logic (domain service)

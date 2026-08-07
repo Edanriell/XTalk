@@ -2,6 +2,7 @@ package login
 
 import (
 	"XTalk/services/auth/application/interfaces"
+	"XTalk/services/auth/domain/users"
 	"context"
 	"crypto/subtle"
 	"errors"
@@ -16,7 +17,7 @@ var (
 
 // Handler handles the login command
 type Handler struct {
-	userRepo       repositories.UserRepository
+	userRepo       users.UserRepository
 	passwordHasher interfaces.PasswordHasher
 	tokenGenerator interfaces.TokenGenerator
 	rateLimiter    interfaces.RateLimiter
@@ -24,7 +25,7 @@ type Handler struct {
 }
 
 func NewHandler(
-	userRepo repositories.UserRepository,
+	userRepo users.UserRepository,
 	passwordHasher interfaces.PasswordHasher,
 	tokenGenerator interfaces.TokenGenerator,
 	rateLimiter interfaces.RateLimiter,
@@ -46,7 +47,7 @@ func (h *Handler) Handle(ctx context.Context, cmd Command) (*Result, error) {
 	}
 
 	// Create email value object
-	email, err := valueobjects.NewEmail(cmd.Email)
+	email, err := users.NewEmail(cmd.Email)
 	if err != nil {
 		return nil, ErrInvalidCredentials
 	}

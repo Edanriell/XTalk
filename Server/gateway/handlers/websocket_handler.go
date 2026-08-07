@@ -16,11 +16,11 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 
-	"github.com/yourusername/connect/api-gateway/circuitbreaker"
-	"github.com/yourusername/connect/api-gateway/config"
-	authpb "github.com/yourusername/connect/proto/auth"
-	msgpb "github.com/yourusername/connect/proto/message"
-	userpb "github.com/yourusername/connect/proto/user"
+	"XTalk/gateway/circuitbreaker"
+	"XTalk/gateway/config"
+	authpb "XTalk/proto/auth"
+	msgpb "XTalk/proto/message"
+	userpb "XTalk/proto/user"
 )
 
 type WebSocketHandler struct {

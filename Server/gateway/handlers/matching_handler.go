@@ -12,9 +12,9 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 
-	"github.com/yourusername/connect/api-gateway/circuitbreaker"
-	"github.com/yourusername/connect/api-gateway/config"
-	matchingpb "github.com/yourusername/connect/proto/matching"
+	"XTalk/gateway/circuitbreaker"
+	"XTalk/gateway/config"
+	matchingpb "XTalk/proto/matching"
 )
 
 type MatchingHandler struct {

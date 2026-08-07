@@ -9,7 +9,7 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o api-gateway ./api-gateway
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -o api-gateway ./gateway
 
 FROM alpine:3.20
 RUN apk --no-cache add ca-certificates && \

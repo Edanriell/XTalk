@@ -11,9 +11,9 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 
-	"github.com/yourusername/connect/api-gateway/circuitbreaker"
-	"github.com/yourusername/connect/api-gateway/config"
-	userpb "github.com/yourusername/connect/proto/user"
+	"XTalk/gateway/circuitbreaker"
+	"XTalk/gateway/config"
+	userpb "XTalk/proto/user"
 )
 
 type UserHandler struct {

@@ -1,7 +1,7 @@
 package get_matching_status
 
 import (
-	repositories "XTalk/services/matching/domain/matches"
+	repositories "XTalk/services/matching/domain/repositories"
 	"context"
 )
 

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	cfg "github.com/yourusername/connect/pkg/config"
+	cfg "XTalk/pkg/config"
 )
 
 type Config struct {

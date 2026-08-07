@@ -15,31 +15,31 @@ import (
 	"google.golang.org/grpc"
 
 	// Application
-	"github.com/yourusername/connect/chat-service/application/commands/create_chat"
-	"github.com/yourusername/connect/chat-service/application/commands/end_chat"
-	"github.com/yourusername/connect/chat-service/application/queries/get_chat"
-	"github.com/yourusername/connect/chat-service/application/queries/get_user_chats"
+	"XTalk/services/chat/application/create_chat"
+	"XTalk/services/chat/application/end_chat"
+	"XTalk/services/chat/application/get_chat"
+	"XTalk/services/chat/application/get_user_chats"
 
 	// Infrastructure
-	grpcServer "github.com/yourusername/connect/chat-service/infrastructure/grpc"
-	"github.com/yourusername/connect/chat-service/infrastructure/idgen"
-	"github.com/yourusername/connect/chat-service/infrastructure/messaging"
-	"github.com/yourusername/connect/chat-service/infrastructure/persistence"
+	"XTalk/services/chat/adapters/idgen"
+	"XTalk/services/chat/adapters/messaging"
+	"XTalk/services/chat/adapters/persistence"
+	grpcServer "XTalk/services/chat/ports/grpc"
 
 	// Config
-	"github.com/yourusername/connect/chat-service/config"
+	"XTalk/services/chat/config"
 
 	// Proto
-	pb "github.com/yourusername/connect/proto/chat"
+	pb "XTalk/proto/chat"
 
 	// Shared packages
-	"github.com/yourusername/connect/pkg/database"
-	"github.com/yourusername/connect/pkg/grpctls"
-	"github.com/yourusername/connect/pkg/health"
-	"github.com/yourusername/connect/pkg/logger"
-	"github.com/yourusername/connect/pkg/metrics"
-	"github.com/yourusername/connect/pkg/requestid"
-	"github.com/yourusername/connect/pkg/tracing"
+	"XTalk/pkg/database"
+	"XTalk/pkg/grpctls"
+	"XTalk/pkg/health"
+	"XTalk/pkg/logger"
+	"XTalk/pkg/metrics"
+	"XTalk/pkg/requestid"
+	"XTalk/pkg/tracing"
 )
 
 func main() {

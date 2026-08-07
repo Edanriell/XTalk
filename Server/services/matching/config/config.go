@@ -1,7 +1,7 @@
 package config
 
 import (
-	pkgcfg "github.com/yourusername/connect/pkg/config"
+	pkgcfg "XTalk/pkg/config"
 )
 
 type Config struct {

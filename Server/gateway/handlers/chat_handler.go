@@ -12,9 +12,9 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 
-	"github.com/yourusername/connect/api-gateway/circuitbreaker"
-	"github.com/yourusername/connect/api-gateway/config"
-	chatpb "github.com/yourusername/connect/proto/chat"
+	"XTalk/gateway/circuitbreaker"
+	"XTalk/gateway/config"
+	chatpb "XTalk/proto/chat"
 )
 
 type ChatHandler struct {

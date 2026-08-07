@@ -15,34 +15,34 @@ import (
 	"google.golang.org/grpc"
 
 	// Application
-	"github.com/yourusername/connect/matching-service/application/commands/end_match"
-	"github.com/yourusername/connect/matching-service/application/commands/join_queue"
-	"github.com/yourusername/connect/matching-service/application/commands/leave_queue"
-	"github.com/yourusername/connect/matching-service/application/queries/get_match_history"
-	"github.com/yourusername/connect/matching-service/application/queries/get_matching_status"
-	"github.com/yourusername/connect/matching-service/application/services"
+	"XTalk/services/matching/application/end_match"
+	"XTalk/services/matching/application/get_match_history"
+	"XTalk/services/matching/application/get_matching_status"
+	"XTalk/services/matching/application/join_queue"
+	"XTalk/services/matching/application/leave_queue"
+	"XTalk/services/matching/application/services"
 
 	// Infrastructure
-	"github.com/yourusername/connect/matching-service/infrastructure/external"
-	grpcServer "github.com/yourusername/connect/matching-service/infrastructure/grpc"
-	"github.com/yourusername/connect/matching-service/infrastructure/idgen"
-	"github.com/yourusername/connect/matching-service/infrastructure/messaging"
-	"github.com/yourusername/connect/matching-service/infrastructure/persistence"
+	"XTalk/services/matching/adapters/external"
+	"XTalk/services/matching/adapters/idgen"
+	"XTalk/services/matching/adapters/messaging"
+	"XTalk/services/matching/adapters/persistence"
+	grpcServer "XTalk/services/matching/ports/grpc"
 
 	// Config
-	"github.com/yourusername/connect/matching-service/config"
+	"XTalk/services/matching/config"
 
 	// Proto
-	pb "github.com/yourusername/connect/proto/matching"
+	pb "XTalk/proto/matching"
 
 	// Shared packages
-	"github.com/yourusername/connect/pkg/database"
-	"github.com/yourusername/connect/pkg/grpctls"
-	"github.com/yourusername/connect/pkg/health"
-	"github.com/yourusername/connect/pkg/logger"
-	"github.com/yourusername/connect/pkg/metrics"
-	"github.com/yourusername/connect/pkg/requestid"
-	"github.com/yourusername/connect/pkg/tracing"
+	"XTalk/pkg/database"
+	"XTalk/pkg/grpctls"
+	"XTalk/pkg/health"
+	"XTalk/pkg/logger"
+	"XTalk/pkg/metrics"
+	"XTalk/pkg/requestid"
+	"XTalk/pkg/tracing"
 )
 
 func main() {

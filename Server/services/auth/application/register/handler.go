@@ -2,6 +2,7 @@ package register
 
 import (
 	"XTalk/services/auth/application/interfaces"
+	"XTalk/services/auth/domain/users"
 	"context"
 
 	"github.com/google/uuid"
@@ -9,26 +10,30 @@ import (
 
 // Handler handles the register command
 type Handler struct {
-	userRepo       repositories.UserRepository
+	userRepo       Repository
 	passwordHasher interfaces.PasswordHasher
 	tokenGenerator interfaces.TokenGenerator
 	validator      interfaces.Validator
-	eventPublisher interfaces.EventPublisher
+}
+
+// Repository keeps the credential aggregate and its integration event in one
+// transaction. The event is relayed asynchronously by an outbound adapter.
+type Repository interface {
+	users.UserRepository
+	CreateWithEvent(context.Context, *users.User, interfaces.UserRegisteredEvent) error
 }
 
 func NewHandler(
-	userRepo repositories.UserRepository,
+	userRepo Repository,
 	passwordHasher interfaces.PasswordHasher,
 	tokenGenerator interfaces.TokenGenerator,
 	validator interfaces.Validator,
-	eventPublisher interfaces.EventPublisher,
 ) *Handler {
 	return &Handler{
 		userRepo:       userRepo,
 		passwordHasher: passwordHasher,
 		tokenGenerator: tokenGenerator,
 		validator:      validator,
-		eventPublisher: eventPublisher,
 	}
 }
 
@@ -43,7 +48,7 @@ func (h *Handler) Handle(ctx context.Context, cmd Command) (*Result, error) {
 	}
 
 	// Create email value object
-	email, err := valueobjects.NewEmail(cmd.Email)
+	email, err := users.NewEmail(cmd.Email)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +60,7 @@ func (h *Handler) Handle(ctx context.Context, cmd Command) (*Result, error) {
 	}
 
 	if exists {
-		return nil, entities.ErrUserExists
+		return nil, users.ErrUserExists
 	}
 
 	// Hash password
@@ -65,15 +70,17 @@ func (h *Handler) Handle(ctx context.Context, cmd Command) (*Result, error) {
 	}
 
 	// Create user entity
-	user := entities.NewUser(
+	user := users.NewUser(
 		uuid.New().String(),
 		cmd.Username,
 		email,
 		passwordHash,
 	)
 
-	// Save user
-	if err := h.userRepo.Save(ctx, user); err != nil {
+	// Commit the credential aggregate and its integration event atomically.
+	if err := h.userRepo.CreateWithEvent(ctx, user, interfaces.UserRegisteredEvent{
+		UserID: user.ID(), Username: user.Username(), Email: user.Email().String(),
+	}); err != nil {
 		return nil, err
 	}
 
@@ -86,15 +93,6 @@ func (h *Handler) Handle(ctx context.Context, cmd Command) (*Result, error) {
 	refreshToken, err := h.tokenGenerator.GenerateRefreshToken(user.ID())
 	if err != nil {
 		return nil, err
-	}
-
-	// Publish user registered event so other services can create the profile
-	if h.eventPublisher != nil {
-		_ = h.eventPublisher.PublishUserRegistered(ctx, interfaces.UserRegisteredEvent{
-			UserID:   user.ID(),
-			Username: cmd.Username,
-			Email:    email.String(),
-		})
 	}
 
 	return &Result{

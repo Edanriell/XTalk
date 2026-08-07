@@ -13,9 +13,9 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"github.com/yourusername/connect/api-gateway/circuitbreaker"
-	"github.com/yourusername/connect/api-gateway/config"
-	pb "github.com/yourusername/connect/proto/auth"
+	"XTalk/gateway/circuitbreaker"
+	"XTalk/gateway/config"
+	pb "XTalk/proto/auth"
 )
 
 type AuthHandler struct {

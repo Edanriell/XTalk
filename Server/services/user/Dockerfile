@@ -9,7 +9,7 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o user-service ./services/user
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -o user-service ./services/user
 
 FROM alpine:3.20
 RUN apk --no-cache add ca-certificates && \
@@ -17,10 +17,10 @@ RUN apk --no-cache add ca-certificates && \
 
 WORKDIR /home/appuser/
 
-COPY --from=builder /app/services/user .
+COPY --from=builder /app/user-service .
 
 USER appuser
 
 EXPOSE 50052
 
-CMD ["./services/user"]
+CMD ["./user-service"]

@@ -11,49 +11,52 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
 	// Application layer
-	"github.com/yourusername/connect/auth-service/application/commands/login"
-	"github.com/yourusername/connect/auth-service/application/commands/logout"
-	"github.com/yourusername/connect/auth-service/application/commands/refresh_token"
-	"github.com/yourusername/connect/auth-service/application/commands/register"
-	"github.com/yourusername/connect/auth-service/application/queries/validate_token"
+	"XTalk/services/auth/application/login"
+	"XTalk/services/auth/application/logout"
+	"XTalk/services/auth/application/refresh_token"
+	"XTalk/services/auth/application/register"
+	"XTalk/services/auth/application/validate_token"
 
 	// Infrastructure layer
-	grpcServer "github.com/yourusername/connect/auth-service/infrastructure/grpc"
-	"github.com/yourusername/connect/auth-service/infrastructure/messaging"
-	"github.com/yourusername/connect/auth-service/infrastructure/persistence"
-	"github.com/yourusername/connect/auth-service/infrastructure/security"
-	"github.com/yourusername/connect/auth-service/infrastructure/validation"
+	"XTalk/services/auth/adapters/messaging"
+	"XTalk/services/auth/adapters/persistence"
+	"XTalk/services/auth/adapters/security"
+	"XTalk/services/auth/adapters/validation"
+	grpcServer "XTalk/services/auth/ports/grpc"
 
 	// Config
-	"github.com/yourusername/connect/auth-service/config"
-	"github.com/yourusername/connect/auth-service/infrastructure/ratelimit"
+	"XTalk/services/auth/adapters/ratelimit"
+	"XTalk/services/auth/config"
 
 	// Proto
-	pb "github.com/yourusername/connect/proto/auth"
+	pb "XTalk/proto/auth"
 
 	// Shared packages
-	"github.com/yourusername/connect/pkg/database"
-	"github.com/yourusername/connect/pkg/grpctls"
-	"github.com/yourusername/connect/pkg/health"
-	"github.com/yourusername/connect/pkg/logger"
-	"github.com/yourusername/connect/pkg/metrics"
-	"github.com/yourusername/connect/pkg/requestid"
-	"github.com/yourusername/connect/pkg/tracing"
+	"XTalk/pkg/database"
+	"XTalk/pkg/grpctls"
+	"XTalk/pkg/health"
+	"XTalk/pkg/logger"
+	"XTalk/pkg/metrics"
+	"XTalk/pkg/requestid"
+	"XTalk/pkg/tracing"
 )
 
 func main() {
 	log := logger.New()
 	defer log.Sync()
+	appCtx, cancelApp := context.WithCancel(context.Background())
+	defer cancelApp()
 
 	cfg := config.LoadConfig()
 
 	// Initialize OpenTelemetry tracing
-	shutdownTracer, err := tracing.Init(context.Background(), tracing.Config{
+	shutdownTracer, err := tracing.Init(appCtx, tracing.Config{
 		ServiceName: "auth-service",
 		Endpoint:    cfg.OTELEndpoint,
 	}, log)
@@ -124,13 +127,13 @@ func main() {
 	// Initialize RabbitMQ event publisher
 	eventPublisher, err := messaging.NewRabbitMQEventPublisher(cfg.RabbitMQURL, "auth_events")
 	if err != nil {
-		log.Warn("failed to initialize RabbitMQ publisher (user profile sync disabled)", zap.Error(err))
-	} else {
-		defer eventPublisher.Close()
+		log.Fatal("failed to initialize RabbitMQ publisher", zap.Error(err))
 	}
+	defer eventPublisher.Close()
+	messaging.NewOutboxRelay(db, eventPublisher, log).Start(appCtx)
 
 	// Create application handlers (Application layer)
-	registerHandler := register.NewHandler(userRepo, passwordHasher, tokenGenerator, validator, eventPublisher)
+	registerHandler := register.NewHandler(userRepo, passwordHasher, tokenGenerator, validator)
 	loginHandler := login.NewHandler(userRepo, passwordHasher, tokenGenerator, rateLimiter, log)
 	validateTokenHandler := validate_token.NewHandler(tokenValidator, tokenBlacklist)
 	refreshTokenHandler := refresh_token.NewHandler(userRepo, tokenValidator, tokenGenerator, tokenBlacklist)
@@ -208,6 +211,7 @@ func main() {
 	<-quit
 
 	log.Info("shutting down Auth Service...")
+	cancelApp()
 	health.SetNotReady(healthSrv, "auth")
 	server.GracefulStop()
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)

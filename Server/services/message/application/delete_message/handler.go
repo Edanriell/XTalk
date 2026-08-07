@@ -1,8 +1,10 @@
 package delete_message
 
 import (
-	repositories "XTalk/services/message/domain/messages"
-	"XTalk/services/message/domain/messages/events"
+	"XTalk/services/message/application/interfaces"
+	"XTalk/services/message/domain/entities"
+	"XTalk/services/message/domain/events"
+	"XTalk/services/message/domain/repositories"
 	"context"
 	"time"
 

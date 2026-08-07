@@ -2,8 +2,10 @@ package send_message
 
 import (
 	"XTalk/services/message/application/interfaces"
-	entities "XTalk/services/message/domain/messages"
-	"XTalk/services/message/domain/messages/events"
+	"XTalk/services/message/domain/entities"
+	"XTalk/services/message/domain/events"
+	"XTalk/services/message/domain/repositories"
+	"XTalk/services/message/domain/valueobjects"
 	"context"
 	"errors"
 	"fmt"

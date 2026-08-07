@@ -72,7 +72,7 @@ func TestUpdateProfileIsAtomicAndDefensivelyCopiesInterests(t *testing.T) {
 	}
 	interests := user.Interests()
 	if len(interests) != 2 || interests[0] != "Go" || interests[1] != "DDD" {
-		t.Fatalf("Interests() = %#domain, want [Go DDD]", interests)
+		t.Fatalf("Interests() = %#v, want [Go DDD]", interests)
 	}
 	interests[0] = "mutated"
 	if user.Interests()[0] != "Go" {

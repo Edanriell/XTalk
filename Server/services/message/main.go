@@ -15,32 +15,32 @@ import (
 	"google.golang.org/grpc"
 
 	// Application
-	"github.com/yourusername/connect/message-service/application/commands/delete_message"
-	"github.com/yourusername/connect/message-service/application/commands/mark_as_read"
-	"github.com/yourusername/connect/message-service/application/commands/send_message"
-	"github.com/yourusername/connect/message-service/application/queries/get_messages"
+	"XTalk/services/message/application/delete_message"
+	"XTalk/services/message/application/get_messages"
+	"XTalk/services/message/application/mark_as_read"
+	"XTalk/services/message/application/send_message"
 
 	// Infrastructure
-	"github.com/yourusername/connect/message-service/infrastructure/external"
-	grpcServer "github.com/yourusername/connect/message-service/infrastructure/grpc"
-	"github.com/yourusername/connect/message-service/infrastructure/idgen"
-	"github.com/yourusername/connect/message-service/infrastructure/messaging"
-	"github.com/yourusername/connect/message-service/infrastructure/persistence"
+	"XTalk/services/message/adapters/external"
+	"XTalk/services/message/adapters/idgen"
+	"XTalk/services/message/adapters/messaging"
+	"XTalk/services/message/adapters/persistence"
+	grpcServer "XTalk/services/message/ports/grpc"
 
 	// Config
-	"github.com/yourusername/connect/message-service/config"
+	"XTalk/services/message/config"
 
 	// Proto
-	pb "github.com/yourusername/connect/proto/message"
+	pb "XTalk/proto/message"
 
 	// Shared packages
-	"github.com/yourusername/connect/pkg/database"
-	"github.com/yourusername/connect/pkg/grpctls"
-	"github.com/yourusername/connect/pkg/health"
-	"github.com/yourusername/connect/pkg/logger"
-	"github.com/yourusername/connect/pkg/metrics"
-	"github.com/yourusername/connect/pkg/requestid"
-	"github.com/yourusername/connect/pkg/tracing"
+	"XTalk/pkg/database"
+	"XTalk/pkg/grpctls"
+	"XTalk/pkg/health"
+	"XTalk/pkg/logger"
+	"XTalk/pkg/metrics"
+	"XTalk/pkg/requestid"
+	"XTalk/pkg/tracing"
 )
 
 func main() {

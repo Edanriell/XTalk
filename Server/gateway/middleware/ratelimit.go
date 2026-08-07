@@ -15,11 +15,11 @@ type ipEntry struct {
 
 // RateLimiter is a simple per-IP token-bucket rate limiter.
 type RateLimiter struct {
-	mu         sync.Mutex
-	entries    map[string]*ipEntry
-	rate       float64 // tokens per second
-	burst      int     // max tokens
-	done       chan struct{}
+	mu      sync.Mutex
+	entries map[string]*ipEntry
+	rate    float64 // tokens per second
+	burst   int     // max tokens
+	done    chan struct{}
 }
 
 // NewRateLimiter creates a rate limiter allowing `rate` req/s with `burst` max burst per IP.
