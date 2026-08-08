@@ -8,42 +8,25 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 
-	"XTalk/gateway/circuitbreaker"
-	"XTalk/gateway/config"
+	"XTalk/gateway/application"
 	chatpb "XTalk/proto/chat"
 )
 
 type ChatHandler struct {
-	conn        *grpc.ClientConn
 	chatClient  chatpb.ChatServiceClient
 	log         *zap.Logger
 	grpcTimeout time.Duration
 }
 
-func NewChatHandler(cfg *config.Config, log *zap.Logger, cbr *circuitbreaker.Registry) *ChatHandler {
-	opts := append([]grpc.DialOption{
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	}, cbr.DialOptions("ChatService")...)
-
-	chatConn, err := grpc.NewClient(cfg.ChatServiceAddr, opts...)
-	if err != nil {
-		log.Fatal("failed to connect to chat service", zap.Error(err))
-	}
-
+func NewChatHandler(client chatpb.ChatServiceClient, cfg *application.Config, log *zap.Logger) *ChatHandler {
 	return &ChatHandler{
-		conn:        chatConn,
-		chatClient:  chatpb.NewChatServiceClient(chatConn),
+		chatClient:  client,
 		log:         log.Named("chat"),
 		grpcTimeout: cfg.GRPCTimeout,
 	}
 }
-
-// Close releases the underlying gRPC connection.
-func (h *ChatHandler) Close() error { return h.conn.Close() }
 
 func (h *ChatHandler) GetUserRooms(c *gin.Context) {
 	userID := c.GetString("userID")

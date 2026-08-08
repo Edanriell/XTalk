@@ -3,6 +3,7 @@ package grpc
 import (
 	"context"
 	"fmt"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	pb "XTalk/proto/matching"
 	"XTalk/services/matching/application/end_match"
@@ -158,11 +159,11 @@ func (s *MatchingGRPCService) GetMatchHistory(ctx context.Context, req *pb.GetMa
 			ChatId:      dto.ChatID,
 			MatchScore:  float32(dto.MatchScore),
 			Status:      dto.Status,
-			CreatedAt:   dto.CreatedAt.Unix(),
+			CreatedAt:   timestamppb.New(dto.CreatedAt),
 		}
 
 		if dto.CompletedAt != nil {
-			match.CompletedAt = dto.CompletedAt.Unix()
+			match.CompletedAt = timestamppb.New(*dto.CompletedAt)
 		}
 
 		matches = append(matches, match)

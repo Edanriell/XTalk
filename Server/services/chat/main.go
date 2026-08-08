@@ -27,7 +27,7 @@ import (
 	grpcServer "XTalk/services/chat/ports/grpc"
 
 	// Config
-	"XTalk/services/chat/config"
+	"XTalk/services/chat/adapters/config"
 
 	// Proto
 	pb "XTalk/proto/chat"

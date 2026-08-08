@@ -4,7 +4,7 @@ package chat;
 
 import "google/protobuf/timestamp.proto";
 
-option go_package = "github.com/yourusername/connect/proto/chat";
+option go_package = "XTalk/proto/chat";
 
 service ChatService {
   // Chat-based RPCs (used by chat-service gRPC implementation)

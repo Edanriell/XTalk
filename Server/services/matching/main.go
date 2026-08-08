@@ -30,7 +30,7 @@ import (
 	grpcServer "XTalk/services/matching/ports/grpc"
 
 	// Config
-	"XTalk/services/matching/config"
+	"XTalk/services/matching/adapters/config"
 
 	// Proto
 	pb "XTalk/proto/matching"

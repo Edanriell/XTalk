@@ -8,42 +8,25 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 
-	"XTalk/gateway/circuitbreaker"
-	"XTalk/gateway/config"
+	"XTalk/gateway/application"
 	matchingpb "XTalk/proto/matching"
 )
 
 type MatchingHandler struct {
-	conn           *grpc.ClientConn
 	matchingClient matchingpb.MatchingServiceClient
 	log            *zap.Logger
 	grpcTimeout    time.Duration
 }
 
-func NewMatchingHandler(cfg *config.Config, log *zap.Logger, cbr *circuitbreaker.Registry) *MatchingHandler {
-	opts := append([]grpc.DialOption{
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	}, cbr.DialOptions("MatchingService")...)
-
-	matchingConn, err := grpc.NewClient(cfg.MatchingServiceAddr, opts...)
-	if err != nil {
-		log.Fatal("failed to connect to matching service", zap.Error(err))
-	}
-
+func NewMatchingHandler(client matchingpb.MatchingServiceClient, cfg *application.Config, log *zap.Logger) *MatchingHandler {
 	return &MatchingHandler{
-		conn:           matchingConn,
-		matchingClient: matchingpb.NewMatchingServiceClient(matchingConn),
+		matchingClient: client,
 		log:            log.Named("matching"),
 		grpcTimeout:    cfg.GRPCTimeout,
 	}
 }
-
-// Close releases the underlying gRPC connection.
-func (h *MatchingHandler) Close() error { return h.conn.Close() }
 
 func (h *MatchingHandler) StartMatching(c *gin.Context) {
 	userID := c.GetString("userID")

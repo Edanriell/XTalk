@@ -31,8 +31,8 @@ import (
 	grpcServer "XTalk/services/auth/ports/grpc"
 
 	// Config
+	"XTalk/services/auth/adapters/config"
 	"XTalk/services/auth/adapters/ratelimit"
-	"XTalk/services/auth/config"
 
 	// Proto
 	pb "XTalk/proto/auth"

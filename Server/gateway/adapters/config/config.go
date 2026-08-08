@@ -1,6 +1,7 @@
 package config
 
 import (
+	"XTalk/gateway/application"
 	"log"
 	"strconv"
 	"strings"
@@ -9,56 +10,14 @@ import (
 	cfg "XTalk/pkg/config"
 )
 
-type Config struct {
-	// Service ports
-	AuthServicePort     string
-	UserServicePort     string
-	ChatServicePort     string
-	MessageServicePort  string
-	MatchingServicePort string
-	APIGatewayPort      string
-
-	// Service addresses (for Docker/k8s service discovery)
-	AuthServiceAddr     string
-	UserServiceAddr     string
-	ChatServiceAddr     string
-	MessageServiceAddr  string
-	MatchingServiceAddr string
-
-	// Messaging
-	RabbitMQURL string
-
-	// Security
-	AllowedOrigins []string
-
-	// Timeouts
-	GRPCTimeout  time.Duration
-	ReadTimeout  time.Duration
-	WriteTimeout time.Duration
-	IdleTimeout  time.Duration
-
-	// Circuit breaker
-	CBFailureThreshold int
-	CBWindowSize       int
-	CBDelay            time.Duration
-	CBSuccessThreshold int
-
-	// WebSocket
-	WSReadBufferSize  int
-	WSWriteBufferSize int
-
-	// Request limits
-	MaxBodySize int64 // maximum request body in bytes
-}
-
-func LoadConfig() *Config {
+func LoadConfig() *application.Config {
 	authPort := cfg.GetEnv("AUTH_SERVICE_PORT", "50051")
 	userPort := cfg.GetEnv("USER_SERVICE_PORT", "50052")
 	chatPort := cfg.GetEnv("CHAT_SERVICE_PORT", "50053")
 	msgPort := cfg.GetEnv("MESSAGE_SERVICE_PORT", "50054")
 	matchPort := cfg.GetEnv("MATCHING_SERVICE_PORT", "50055")
 
-	return &Config{
+	return &application.Config{
 		AuthServicePort:     authPort,
 		UserServicePort:     userPort,
 		ChatServicePort:     chatPort,

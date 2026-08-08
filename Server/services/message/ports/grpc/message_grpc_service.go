@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"context"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	pb "XTalk/proto/message"
 	"XTalk/services/message/application/delete_message"
@@ -57,7 +58,7 @@ func (s *MessageGRPCService) SendMessage(ctx context.Context, req *pb.SendMessag
 		MessageId: result.MessageID,
 		Success:   true,
 		Message:   "Message sent successfully",
-		Timestamp: result.CreatedAt.Unix(),
+		Timestamp: timestamppb.New(result.CreatedAt),
 	}, nil
 }
 
@@ -96,14 +97,14 @@ func (s *MessageGRPCService) GetMessages(ctx context.Context, req *pb.GetMessage
 			Content:     dto.Content,
 			Metadata:    dto.Metadata,
 			IsRead:      dto.IsRead,
-			CreatedAt:   dto.CreatedAt.Unix(),
+			CreatedAt:   timestamppb.New(dto.CreatedAt),
 		}
 
 		if dto.ReadAt != nil {
-			msg.ReadAt = dto.ReadAt.Unix()
+			msg.ReadAt = timestamppb.New(*dto.ReadAt)
 		}
 		if dto.DeletedAt != nil {
-			msg.DeletedAt = dto.DeletedAt.Unix()
+			msg.DeletedAt = timestamppb.New(*dto.DeletedAt)
 		}
 
 		messages = append(messages, msg)
@@ -157,6 +158,6 @@ func (s *MessageGRPCService) MarkAsRead(ctx context.Context, req *pb.MarkAsReadR
 		MessageId: result.MessageID,
 		Success:   true,
 		Message:   "Message marked as read",
-		ReadAt:    result.ReadAt.Unix(),
+		ReadAt:    timestamppb.New(result.ReadAt),
 	}, nil
 }

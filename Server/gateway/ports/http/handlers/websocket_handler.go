@@ -12,21 +12,15 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"go.uber.org/zap"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 
-	"XTalk/gateway/circuitbreaker"
-	"XTalk/gateway/config"
+	"XTalk/gateway/application"
 	authpb "XTalk/proto/auth"
 	msgpb "XTalk/proto/message"
 	userpb "XTalk/proto/user"
 )
 
 type WebSocketHandler struct {
-	authConn       *grpc.ClientConn
-	userConn       *grpc.ClientConn
-	msgConn        *grpc.ClientConn
 	authClient     authpb.AuthServiceClient
 	userClient     userpb.UserServiceClient
 	msgClient      msgpb.MessageServiceClient
@@ -71,34 +65,13 @@ func (c *Client) trySend(data []byte) bool {
 	}
 }
 
-func NewWebSocketHandler(cfg *config.Config, log *zap.Logger, cbr *circuitbreaker.Registry) *WebSocketHandler {
-	authOpts := append([]grpc.DialOption{
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	}, cbr.DialOptions("AuthService")...)
-
-	authConn, err := grpc.NewClient(cfg.AuthServiceAddr, authOpts...)
-	if err != nil {
-		log.Fatal("failed to connect to auth service for ws", zap.Error(err))
-	}
-
-	userOpts := append([]grpc.DialOption{
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	}, cbr.DialOptions("UserService")...)
-
-	userConn, err := grpc.NewClient(cfg.UserServiceAddr, userOpts...)
-	if err != nil {
-		log.Fatal("failed to connect to user service for ws", zap.Error(err))
-	}
-
-	msgOpts := append([]grpc.DialOption{
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	}, cbr.DialOptions("MessageService")...)
-
-	msgConn, err := grpc.NewClient(cfg.MessageServiceAddr, msgOpts...)
-	if err != nil {
-		log.Fatal("failed to connect to message service for ws", zap.Error(err))
-	}
-
+func NewWebSocketHandler(
+	cfg *application.Config,
+	log *zap.Logger,
+	authClient authpb.AuthServiceClient,
+	userClient userpb.UserServiceClient,
+	messageClient msgpb.MessageServiceClient,
+) *WebSocketHandler {
 	// Parse allowed origins from config
 	origins := make(map[string]struct{})
 	for _, o := range cfg.AllowedOrigins {
@@ -106,12 +79,9 @@ func NewWebSocketHandler(cfg *config.Config, log *zap.Logger, cbr *circuitbreake
 	}
 
 	return &WebSocketHandler{
-		authConn:       authConn,
-		userConn:       userConn,
-		msgConn:        msgConn,
-		authClient:     authpb.NewAuthServiceClient(authConn),
-		userClient:     userpb.NewUserServiceClient(userConn),
-		msgClient:      msgpb.NewMessageServiceClient(msgConn),
+		authClient:     authClient,
+		userClient:     userClient,
+		msgClient:      messageClient,
 		log:            log.Named("websocket"),
 		clients:        make(map[string]*Client),
 		rooms:          make(map[string]map[string]struct{}),
@@ -120,17 +90,6 @@ func NewWebSocketHandler(cfg *config.Config, log *zap.Logger, cbr *circuitbreake
 		writeBufSize:   cfg.WSWriteBufferSize,
 		grpcTimeout:    cfg.GRPCTimeout,
 	}
-}
-
-// Close releases all underlying gRPC connections.
-func (h *WebSocketHandler) Close() error {
-	var firstErr error
-	for _, conn := range []*grpc.ClientConn{h.authConn, h.userConn, h.msgConn} {
-		if err := conn.Close(); err != nil && firstErr == nil {
-			firstErr = err
-		}
-	}
-	return firstErr
 }
 
 func (h *WebSocketHandler) upgrader() websocket.Upgrader {

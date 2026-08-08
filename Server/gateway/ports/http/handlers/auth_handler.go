@@ -10,41 +10,24 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 
-	"XTalk/gateway/circuitbreaker"
-	"XTalk/gateway/config"
+	"XTalk/gateway/application"
 	pb "XTalk/proto/auth"
 )
 
 type AuthHandler struct {
-	conn        *grpc.ClientConn
 	client      pb.AuthServiceClient
 	log         *zap.Logger
 	grpcTimeout time.Duration
 }
 
-func NewAuthHandler(cfg *config.Config, log *zap.Logger, cbr *circuitbreaker.Registry) *AuthHandler {
-	opts := append([]grpc.DialOption{
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	}, cbr.DialOptions("AuthService")...)
-
-	conn, err := grpc.NewClient(cfg.AuthServiceAddr, opts...)
-	if err != nil {
-		log.Fatal("failed to connect to auth service", zap.Error(err))
-	}
-
+func NewAuthHandler(client pb.AuthServiceClient, cfg *application.Config, log *zap.Logger) *AuthHandler {
 	return &AuthHandler{
-		conn:        conn,
-		client:      pb.NewAuthServiceClient(conn),
+		client:      client,
 		log:         log.Named("auth"),
 		grpcTimeout: cfg.GRPCTimeout,
 	}
 }
-
-// Close releases the underlying gRPC connection.
-func (h *AuthHandler) Close() error { return h.conn.Close() }
 
 func (h *AuthHandler) Register(c *gin.Context) {
 	var req struct {

@@ -12,11 +12,12 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 
-	"XTalk/gateway/circuitbreaker"
-	"XTalk/gateway/config"
-	"XTalk/gateway/handlers"
-	"XTalk/gateway/messaging"
-	"XTalk/gateway/middleware"
+	"XTalk/gateway/adapters/circuitbreaker"
+	"XTalk/gateway/adapters/config"
+	"XTalk/gateway/adapters/grpcclient"
+	"XTalk/gateway/ports/http/handlers"
+	"XTalk/gateway/ports/http/middleware"
+	"XTalk/gateway/ports/rabbitmq"
 	"XTalk/pkg/logger"
 	"XTalk/pkg/metrics"
 )
@@ -34,20 +35,25 @@ func main() {
 		Delay:            cfg.CBDelay,
 		SuccessThreshold: cfg.CBSuccessThreshold,
 	})
+	serviceClients, err := grpcclient.New(cfg, cbRegistry)
+	if err != nil {
+		log.Fatal("initialize service clients", zap.Error(err))
+	}
+	defer serviceClients.Close()
 
 	// Initialize handlers
-	authHandler := handlers.NewAuthHandler(cfg, log, cbRegistry)
-	defer authHandler.Close()
-	userHandler := handlers.NewUserHandler(cfg, log, cbRegistry)
-	defer userHandler.Close()
-	chatHandler := handlers.NewChatHandler(cfg, log, cbRegistry)
-	defer chatHandler.Close()
-	messageHandler := handlers.NewMessageHandler(cfg, log, cbRegistry)
-	defer messageHandler.Close()
-	matchingHandler := handlers.NewMatchingHandler(cfg, log, cbRegistry)
-	defer matchingHandler.Close()
-	wsHandler := handlers.NewWebSocketHandler(cfg, log, cbRegistry)
-	defer wsHandler.Close()
+	authHandler := handlers.NewAuthHandler(serviceClients.Auth, cfg, log)
+	userHandler := handlers.NewUserHandler(serviceClients.User, cfg, log)
+	chatHandler := handlers.NewChatHandler(serviceClients.Chat, cfg, log)
+	messageHandler := handlers.NewMessageHandler(serviceClients.Message, cfg, log)
+	matchingHandler := handlers.NewMatchingHandler(serviceClients.Matching, cfg, log)
+	wsHandler := handlers.NewWebSocketHandler(
+		cfg,
+		log,
+		serviceClients.Auth,
+		serviceClients.User,
+		serviceClients.Message,
+	)
 
 	// Initialize RabbitMQ consumer for real-time push notifications
 	mqCtx, mqCancel := context.WithCancel(context.Background())

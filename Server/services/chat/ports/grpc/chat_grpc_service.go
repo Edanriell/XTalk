@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	pb "XTalk/proto/chat"
 	"XTalk/services/chat/application/create_chat"
@@ -86,13 +87,13 @@ func (s *ChatGRPCService) GetChat(ctx context.Context, req *pb.GetChatRequest) (
 			Participant2: dto.Participant2,
 			Status:       dto.Status,
 			MatchScore:   float32(dto.MatchScore),
-			CreatedAt:    dto.CreatedAt.Unix(),
-			UpdatedAt:    dto.UpdatedAt.Unix(),
+			CreatedAt:    timestamppb.New(dto.CreatedAt),
+			UpdatedAt:    timestamppb.New(dto.UpdatedAt),
 		},
 	}
 
 	if dto.EndedAt != nil {
-		response.Chat.EndedAt = dto.EndedAt.Unix()
+		response.Chat.EndedAt = timestamppb.New(*dto.EndedAt)
 	}
 
 	return response, nil
@@ -122,12 +123,12 @@ func (s *ChatGRPCService) GetUserChats(ctx context.Context, req *pb.GetUserChats
 			Participant2: dto.Participant2,
 			Status:       dto.Status,
 			MatchScore:   float32(dto.MatchScore),
-			CreatedAt:    dto.CreatedAt.Unix(),
-			UpdatedAt:    dto.UpdatedAt.Unix(),
+			CreatedAt:    timestamppb.New(dto.CreatedAt),
+			UpdatedAt:    timestamppb.New(dto.UpdatedAt),
 		}
 
 		if dto.EndedAt != nil {
-			chat.EndedAt = dto.EndedAt.Unix()
+			chat.EndedAt = timestamppb.New(*dto.EndedAt)
 		}
 
 		chats = append(chats, chat)

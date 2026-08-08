@@ -8,42 +8,25 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 
-	"XTalk/gateway/circuitbreaker"
-	"XTalk/gateway/config"
+	"XTalk/gateway/application"
 	msgpb "XTalk/proto/message"
 )
 
 type MessageHandler struct {
-	conn        *grpc.ClientConn
 	msgClient   msgpb.MessageServiceClient
 	log         *zap.Logger
 	grpcTimeout time.Duration
 }
 
-func NewMessageHandler(cfg *config.Config, log *zap.Logger, cbr *circuitbreaker.Registry) *MessageHandler {
-	opts := append([]grpc.DialOption{
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	}, cbr.DialOptions("MessageService")...)
-
-	msgConn, err := grpc.NewClient(cfg.MessageServiceAddr, opts...)
-	if err != nil {
-		log.Fatal("failed to connect to message service", zap.Error(err))
-	}
-
+func NewMessageHandler(client msgpb.MessageServiceClient, cfg *application.Config, log *zap.Logger) *MessageHandler {
 	return &MessageHandler{
-		conn:        msgConn,
-		msgClient:   msgpb.NewMessageServiceClient(msgConn),
+		msgClient:   client,
 		log:         log.Named("message"),
 		grpcTimeout: cfg.GRPCTimeout,
 	}
 }
-
-// Close releases the underlying gRPC connection.
-func (h *MessageHandler) Close() error { return h.conn.Close() }
 
 func (h *MessageHandler) GetMessages(c *gin.Context) {
 	token := extractToken(c)
